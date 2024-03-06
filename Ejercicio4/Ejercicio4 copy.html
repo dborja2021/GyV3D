@@ -13,27 +13,60 @@
     Step: <input type="text" value="0.01" id="step">
 </body>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/3.4.2/gl-matrix-min.js"></script>
+
 <script id="shaderVs" type="x-shader/x-vertex">
     attribute vec4 a_Position;
-    uniform vec2 u_Translation;
+    uniform mat4 u_Matrix;
     void main() {
-        gl_Position = a_Position + vec4(u_Translation, 0.0, 0.0);
+        gl_Position = u_Matrix * a_Position;
     }
 </script>
 
 <script id="shaderFs" type="x-shader/x-fragment">
-    precision mediump float;
-    uniform vec4 u_FragColor;
     void main() {
-        gl_FragColor = u_FragColor;
+        gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
     }
 </script>
 
 <script>
-    var translation = [0.0, 0.0];
-    var scale = 1.0;
-    var triangleTranslation = [0.0, 0.0] ;
+    var translation = [0.0, 0.0, 0.0];
+    var scale = 1.0
+    var triangleTranslation = [0.0, 0.0, 0.0];
+    var rad_ang = 0.0;
+    /**
+     * WebGL transformations: translation and scale
+     * 
+     * This example shows how to translate and scale a triangle using WebGL.
+     */
+
+    /**
+     * This function is used to initialize the scene
+     */
     function init() {
+        // Triangle
+        var verticesTriangulo = new Float32Array([
+            -0.75, 0.0, 0.0,
+            0.0, 0.5, 0.0,
+            0.75, 0.0, 0.0,
+        ]);
+
+        // Rectangulo Izquierda
+        var verticesRectangulo1= new Float32Array([
+            -0.5, 0.0, 0.0,
+            -0.5, -0.75, 0.0,
+            -0.25, 0.0, 0.0,
+            -0.25, -0.75, 0.0,
+        ]);
+
+        // Rectangulo Derecha
+        var verticesRectangulo2= new Float32Array([
+            0.25, 0.0, 0.0,
+            0.25, -0.75, 0.0,
+            0.5, 0.0, 0.0,
+            0.5, -0.75, 0.0,
+        ]);
+
         // Get canvas object from the DOM
         var canvas = document.getElementById("myCanvas");
 
@@ -53,103 +86,85 @@
         }
 
         // Write the positions of vertices to a vertex shader
-        var buffers = initVertexBuffers(gl);
-        if (!buffers) {
-            console.log('Failed to set the positions of the vertices');
-            return;
-        }
-
-        // Clear canvas
-        gl.clearColor(0, 0, 1, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2);
 
         document.onkeydown = function (ev) {
-            handleKeyPress(ev.key);
+            handleKeyPress(ev.key);   
         };
 
-        // Draw
-        drawScene(gl, buffers);
+        drawScene(gl);
+
     }
 
-    function initVertexBuffers(gl) {
-        // Fragment color
-        var rgba = [1.0, 1.0, 0.0, 1.0];
+    /**
+     * This function is used to draw the scene and animate it
+     * @param {WebGLRenderingContext} gl 
+     * @param {Number} rad_ang 
+     */
+    function drawScene(gl) {
+        // Establecer color fondo
+        gl.clearColor(0.0, 0.0, 1.0, 1.0);
 
-        // Rectangulo Izquierda
-        var recrtIzqVertices= new Float32Array([
-            -0.5, 0.0, -0.5, -0.75, -0.25, -0.75,
-            -0.5, 0.0, -0.25, 0.0, -0.25, -0.75,
-        ]);
-        var recrtIzqBuffer = initBuffer(gl, recrtIzqVertices);
+        // Clear canvas
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // Rectangulo Derecha
-        var recrtDrchVertices= new Float32Array([
-            0.25, 0.0, 0.25, -0.75, 0.5, -0.75,
-            0.25, 0.0, 0.5, 0.0, 0.5, -0.75,
-            ]);
-        var recrtDrchBuffer = initBuffer(gl, recrtDrchVertices);
+        // Calculate new scale
+        // var scale = Math.abs(Math.sin(rad_ang));
+        // var position = Math.sin(rad_ang);
 
-        // Triangulo
-        var trianguloVertices= new Float32Array([
-            -0.75, 0.0, 0.0, 0.5, 0.75, 0.0   
-            ]);
-        var trianguloBuffer = initBuffer(gl, trianguloVertices);
+        var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
+        var translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), translation);
+        var matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
+ /*     var rotateX = glMatrix.mat4.fromXRotation(glMatrix.mat4.create(), rad_ang);
+        var rotateY = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang);
+        var rotateZ = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rad_ang);
+        var translated_scaled = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
+        var translated_scaled_X = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled, rotateX);
+        var translated_scaled_XY = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled_X, rotateY);
+        var translated_scaled_XYZ = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled_XY, rotateZ);
+ */       
 
-        return {
-            rectLeft: { buffer: recrtIzqBuffer, color: rgba },
-            rectRight: { buffer: recrtDrchBuffer, color: rgba },
-            triangle: { buffer: trianguloBuffer, color: rgba },
-        };
+        // Set uniform value (u_Matrix) in vertex shader
+        var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
+        gl.uniformMatrix4fv(mvMatrixUniform, false, matrix);
+
+        // // Draw Triangle
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        // Draw Rectangulo Izquierda
+        gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
+        
+        // Draw Rectangulo Derecha
+        gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
+
+        // Increase angle
+        // rad_ang += 0.01;
+
+        // Call drawScene again in the next browser repaint
+        // requestAnimationFrame(function() {
+        //    drawScene(gl, rad_ang)
+        // });
     }
 
-    function initBuffer(gl, vertices){
-        var dim = 2;
-
-        // Create a buffer object
+    /**
+     * This function is used to initialize the vertex buffers
+     * @param {WebGLRenderingContext} gl 
+     */
+     function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2) {
+        // Crear un solo búfer
         var vertexBuffer = gl.createBuffer();
-        if (!vertexBuffer) {
-            console.log('Failed to create the buffer object');
-            return -1;
-        }
-
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-        // Return the buffer object
-        return {
-            buffer: vertexBuffer,
-            dim: dim,
-            numVertices: vertices.length / dim,
-        };
-    }
-/*
-        // Assign the vertices in buffer object to a_Position variable
+        // Almacenar todas las coordenadas en el búfer
+        var allVertices = new Float32Array([...verticesTriangulo, ...verticesRectangulo1, ...verticesRectangulo2]);
+        gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW);
+
+        // Asignar las coordenadas a la variable a_Position
         var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        if (a_Position < 0) {
-            console.log('Failed to get the storage location of a_Position');
-            return -1;
-        }
-        gl.vertexAttribPointer(a_Position, dim, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_Position);
-
-        // Assign the color to u_FragColor variable
-        var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
-        if (u_FragColor < 0) {
-            console.log('Failed to get the storage location of u_FragColor');
-            return -1;
-        }
-        gl.uniform4fv(u_FragColor, rgba);
-
-        // Return number of vertices
-        return vertices.length / dim;
-
-        // Assign the vertices in buffer object to a_Position variable
-    /*  var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
         gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(a_Position);
-    */
+    }
     
-
     /**
      * This function is used to initialize the shaders
      * @param {WebGLRenderingContext} gl 
@@ -157,7 +172,7 @@
      * @param {String} fs_source 
      * @returns {Boolean}
      */
-    function initShaders(gl, vs_source, fs_source) {
+     function initShaders(gl, vs_source, fs_source) {
         // Compile shaders
         var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
         var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
@@ -199,38 +214,6 @@
         return shader;
     }
 
-    function drawScene() {
-        var canvas = document.getElementById("myCanvas");
-        var gl = canvas.getContext("webgl");
-        gl.clear(gl.COLOR_BUFFER_BIT);
-
-        // Set the translation uniform in the vertex shader
-        var u_Translation = gl.getUniformLocation(gl.program, 'u_Translation');
-        gl.uniform2fv(u_Translation, translation);
-
-        // Set the scale uniform in the vertex shader
-        var u_Scale = gl.getUniformLocation(gl.program, 'u_Scale');
-        gl.uniform1f(u_Scale, scale);
-
-        // Draw the figures
-        var buffers = initVertexBuffers(gl);
-        drawFigure(gl, buffers.rectLeft.buffer, buffers.rectLeft.color);
-        drawFigure(gl, buffers.rectRight.buffer, buffers.rectRight.color);
-        drawFigure(gl, buffers.triangle.buffer, buffers.triangle.color);
-    }
-
-    function drawFigure(gl, buffer, color) {
-        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
-        gl.vertexAttribPointer(a_Position, buffer.dim, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_Position);
-
-        var u_FragColor = gl.getUniformLocation(gl.program, 'u_FragColor');
-        gl.uniform4fv(u_FragColor, color);
-
-        gl.drawArrays(gl.TRIANGLES, 0, buffer.numVertices);
-    }
-
     function handleKeyPress(key) {
         var step = parseFloat(document.getElementById("step").value);
         switch (key) {
@@ -247,10 +230,10 @@
                 translation[1] -= step;
                 break;
             case "PageUp":
-                scale *= step*10;
+                scale += step;
                 break;
             case "PageDown":
-                scale /= step*10;
+                scale -= step;
                 break;
             case "w":
                 triangleTranslation[1] += step;
@@ -264,61 +247,7 @@
             case "a":
                 triangleTranslation[0] -= step;
                 break;
-
-
-
         }
-        drawScene();
     }
-
-
-
-
-    document.onkeydown = function (ev) {
-        var step = new Number(document.getElementById("step").value);
-        switch (ev.key) {
-        case "ArrowLeft": // Left
-        // ...
-        break;
-        case "ArrowRight": // Right
-        // ...
-        break;
-        case "ArrowUp": // Up
-        // ...
-        break;
-        case "ArrowDown": // Down
-        // ...
-        break;
-        case "PageUp": // PageUp
-        // ...
-        break;
-        case "PageDown": // PageDown
-        // ...
-        break;
-        case "w": // w
-        // ...
-        break
-        case "a": // a
-        // ...
-        break;
-        case "s": // s
-        // ...
-        break;
-        case "d": // d
-        // ...
-        break;
-        case "z": // z
-        // ...
-        break
-        case "x": // x
-        // ...
-        break
-        case "c": // c
-        // ...
-        break
-        }
-        // ...
-    };    
 </script>
-
 </html>
