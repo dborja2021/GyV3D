@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio 3</title>
+    <meta name="author" content="Daniel Borja Fernández">
+    <meta name="email" content="d.borja.2021@alumnos.urjc.es">
+</head>
+
+<body onload="init()">
+    <canvas id="myCanvas" width="700" height="500"></canvas>
+
+    <script id="shaderVs" type="x-shader/x-vertex">
+        attribute vec4 a_Position; 
+        void main() {
+            gl_Position = a_Position;
+            gl_PointSize = 10.0;
+        }
+    </script>
+
+    <script id="shaderFs" type="x-shader/x-fragment">
+        precision mediump float;
+        uniform vec4 u_Color;
+        void main() {
+            gl_FragColor = u_Color;
+        }
+    </script>
+
+    <script>
+        class WebGLApp {
+            constructor() {
+                this.puntos = [];
+                this.triangulos = [];
+                this.colores = [
+                    [1, 0, 0, 1],
+                    [0, 1, 0, 1],
+                    [0, 0, 1, 1]
+                ];
+                this.canvas = document.getElementById("myCanvas");
+                this.gl = this.canvas.getContext("webgl");
+
+                if (!this.gl) {
+                    console.log("Failed to get the rendering context for WebGL");
+                    return;
+                }
+
+                this.initShaders();
+                this.setupEventListeners();
+                this.clearCanvas();
+            }
+
+            initShaders() {
+                var vs = document.getElementById('shaderVs').innerHTML;
+                var fs = document.getElementById('shaderFs').innerHTML;
+
+                if (!this.initShadersProgram(vs, fs)) {
+                    console.log('Failed to initialize shaders.');
+                    return;
+                }
+            }
+
+            initShadersProgram(vs_source, fs_source) {
+                var vertexShader = this.makeShader(vs_source, this.gl.VERTEX_SHADER);
+                var fragmentShader = this.makeShader(fs_source, this.gl.FRAGMENT_SHADER);
+
+                this.glProgram = this.gl.createProgram();
+                this.gl.attachShader(this.glProgram, vertexShader);
+                this.gl.attachShader(this.glProgram, fragmentShader);
+                this.gl.linkProgram(this.glProgram);
+
+                if (!this.gl.getProgramParameter(this.glProgram, this.gl.LINK_STATUS)) {
+                    alert("Unable to initialize the shader program");
+                    return false;
+                }
+
+                this.gl.useProgram(this.glProgram);
+                return true;
+            }
+
+            makeShader(src, type) {
+                var shader = this.gl.createShader(type);
+                this.gl.shaderSource(shader, src);
+                this.gl.compileShader(shader);
+
+                if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+                    alert("Error compiling shader: " + this.gl.getShaderInfoLog(shader));
+                    return;
+                }
+
+                return shader;
+            }
+
+            clearCanvas() {
+                this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+            }
+
+            setupEventListeners() {
+                this.canvas.onmousedown = (ev) => this.handleClick(ev);
+            }
+
+            handleClick(ev) {
+                var rect = ev.target.getBoundingClientRect();
+                var clickX = ev.clientX - rect.left;
+                var clickY = ev.clientY - rect.top;
+                var halfCanvasWidth = this.canvas.width / 2;
+                var halfCanvasHeight = this.canvas.height / 2;
+                var x = (clickX - halfCanvasWidth) / halfCanvasWidth;
+                var y = (halfCanvasHeight - clickY) / halfCanvasHeight;
+                var punto = [x, y];
+
+                this.puntos.push(punto);
+                console.log(this.puntos);
+
+                this.clearCanvas();
+
+                if (this.puntos.length < 3) {
+                    for (var i = 0; i < this.puntos.length; i++) {
+                        this.drawPoint(this.puntos[i]);
+                    }
+                }
+
+                if (this.puntos.length >= 3) {
+                    for (var i = 0; i < this.puntos.length - 2; i++) {
+                        var triangulo = [this.puntos[i][0], this.puntos[i][1], this.puntos[i + 1][0], this.puntos[i + 1][1], this.puntos[i + 2][0], this.puntos[i + 2][1]];
+                        this.drawTriangle(triangulo, this.colores[i % this.colores.length]);
+                    }
+                }
+            }
+
+            drawPoint(punto) {
+                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position");
+                this.gl.vertexAttrib2fv(a_Position, punto);
+                this.gl.drawArrays(this.gl.POINTS, 0, 1);
+            }
+
+            drawTriangle(vertices, color) {
+                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position");
+                var verticesArray = new Float32Array(vertices);
+                var verticesBuffer = this.gl.createBuffer();
+
+                if (!verticesBuffer) {
+                    console.log('Error creating buffer object');
+                    return -1;
+                }
+
+                this.gl.bindBuffer(this.gl.ARRAY_BUFFER, verticesBuffer);
+                this.gl.bufferData(this.gl.ARRAY_BUFFER, verticesArray, this.gl.STATIC_DRAW);
+                this.gl.vertexAttribPointer(a_Position, 2, this.gl.FLOAT, false, 0, 0);
+                this.gl.enableVertexAttribArray(a_Position);
+
+                var u_Color = this.gl.getUniformLocation(this.glProgram, 'u_Color');
+                this.gl.uniform4fv(u_Color, color);
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+            }
+        }
+
+        function init() {
+            new WebGLApp();
+        }
+    </script>
+</body>
+
+</html>
