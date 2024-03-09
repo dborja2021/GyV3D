@@ -115,18 +115,19 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
 
         console.log("Translation:", translation);
-        console.log("Rotation Angle:", rad_ang);
         console.log("Scale:", scale);
         console.log("Triangle Translation:", triangleTranslation);
-
-        var globalTranslated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), translation);
+        console.log("Rotation Triangulo:", triangleRotation);
+        console.log("Rotacion Rectangulo 1:", rect1Rotation);
+        console.log("Rotacion Rectangulo 2:", rect2Rotation);
+        
 
         var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
-        var translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
+        var translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), translation);
         var rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), triangleRotation);
         var triangleMatrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
         triangleMatrix = glMatrix.mat4.multiply(triangleMatrix, rotated, triangleMatrix);
-        triangleMatrix = glMatrix.mat4.multiply(globalTranslated, triangleMatrix, triangleMatrix);
+        triangleMatrix = glMatrix.mat4.multiply(translated, triangleMatrix, triangleMatrix);
 
         var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
         gl.uniformMatrix4fv(mvMatrixUniform, false, triangleMatrix);
@@ -138,7 +139,7 @@
         var rect1Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect1Rotation);
         var rect1Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect1Translated, scaled);
         rect1Matrix = glMatrix.mat4.multiply(rect1Matrix, rect1Rotated, rect1Matrix);
-        rect1Matrix = glMatrix.mat4.multiply(globalTranslated, rect1Matrix, rect1Matrix);
+        rect1Matrix = glMatrix.mat4.multiply(translated, rect1Matrix, rect1Matrix);
 
         gl.uniformMatrix4fv(mvMatrixUniform, false, rect1Matrix);
         gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
@@ -148,7 +149,7 @@
         var rect2Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect2Rotation);
         var rect2Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect2Translated, scaled);
         rect2Matrix = glMatrix.mat4.multiply(rect2Matrix, rect2Rotated, rect2Matrix);
-        rect2Matrix = glMatrix.mat4.multiply(globalTranslated, rect2Matrix, rect2Matrix);
+        rect2Matrix = glMatrix.mat4.multiply(translated, rect2Matrix, rect2Matrix);
 
         gl.uniformMatrix4fv(mvMatrixUniform, false, rect2Matrix);
         gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
