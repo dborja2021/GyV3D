@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ejercicio 4</title>
     <meta name="author" content="Daniel Borja Fernández">
     <meta name="email" content="d.borja.2021@alumnos.urjc.es">
@@ -24,6 +26,7 @@
 </script>
 
 <script id="shaderFs" type="x-shader/x-fragment">
+    precision mediump float;
     void main() {
         gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
     }
@@ -34,153 +37,137 @@
     var scale = 1.0
     var triangleTranslation = [0.0, 0.0, 0.0];
     var rad_ang = 0.0;
-    /**
-     * WebGL transformations: translation and scale
-     * 
-     * This example shows how to translate and scale a triangle using WebGL.
-     */
+    var triangleRotation = 0.0;
+    var rect1Rotation = 0.0;
+    var rect2Rotation = 0.0;
 
-    /**
-     * This function is used to initialize the scene
-     */
+
     function init() {
-        // Triangle
         var verticesTriangulo = new Float32Array([
             -0.75, 0.0, 0.0,
             0.0, 0.5, 0.0,
             0.75, 0.0, 0.0,
         ]);
 
-        // Rectangulo Izquierda
-        var verticesRectangulo1= new Float32Array([
+        var verticesRectangulo1 = new Float32Array([
             -0.5, 0.0, 0.0,
             -0.5, -0.75, 0.0,
             -0.25, 0.0, 0.0,
             -0.25, -0.75, 0.0,
         ]);
 
-        // Rectangulo Derecha
-        var verticesRectangulo2= new Float32Array([
+        var verticesRectangulo2 = new Float32Array([
             0.25, 0.0, 0.0,
             0.25, -0.75, 0.0,
             0.5, 0.0, 0.0,
             0.5, -0.75, 0.0,
         ]);
 
-        // Get canvas object from the DOM
         var canvas = document.getElementById("myCanvas");
-
-        // Init WebGL context
         var gl = canvas.getContext("webgl");
         if (!gl) {
             console.log("Failed to get the rendering context for WebGL");
             return;
         }
 
-        // Init shaders
         var vs = document.getElementById('shaderVs').innerHTML;
         var fs = document.getElementById('shaderFs').innerHTML;
         if (!initShaders(gl, vs, fs)) {
-            console.log('Failed to intialize shaders.');
+            console.log('Failed to initialize shaders.');
             return;
         }
 
-        // Write the positions of vertices to a vertex shader
         initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2);
 
         document.onkeydown = function (ev) {
-            handleKeyPress(ev.key);   
+            handleKeyPress(ev.key);
         };
 
+        var canvas = document.getElementById("myCanvas");
+        canvas.addEventListener('keyPress', handleKeyPress);
+        canvas.setAttribute('tabinex', '0');
+        canvas.focus();
         drawScene(gl);
-
     }
 
-    /**
-     * This function is used to draw the scene and animate it
-     * @param {WebGLRenderingContext} gl 
-     * @param {Number} rad_ang 
-     */
+
     function drawScene(gl) {
-        // Establecer color fondo
         gl.clearColor(0.0, 0.0, 1.0, 1.0);
-
-        // Clear canvas
         gl.clear(gl.COLOR_BUFFER_BIT);
-
-        // Calculate new scale
-        // var scale = Math.abs(Math.sin(rad_ang));
-        // var position = Math.sin(rad_ang);
 
         var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
         var translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), translation);
         var matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
- /*     var rotateX = glMatrix.mat4.fromXRotation(glMatrix.mat4.create(), rad_ang);
-        var rotateY = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang);
-        var rotateZ = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rad_ang);
-        var translated_scaled = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
-        var translated_scaled_X = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled, rotateX);
-        var translated_scaled_XY = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled_X, rotateY);
-        var translated_scaled_XYZ = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated_scaled_XY, rotateZ);
- */       
 
-        // Set uniform value (u_Matrix) in vertex shader
         var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
         gl.uniformMatrix4fv(mvMatrixUniform, false, matrix);
 
-        // // Draw Triangle
         gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-        // Draw Rectangulo Izquierda
+        var translatedRect1 = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
+        var combinedMatrixRect1 = glMatrix.mat4.multiply(glMatrix.mat4.create(), matrix, translatedRect1);
+        gl.uniformMatrix4fv(mvMatrixUniform, false, combinedMatrixRect1);
         gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
-        
-        // Draw Rectangulo Derecha
+
+        var translatedRect2 = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
+        var combinedMatrixRect2 = glMatrix.mat4.multiply(glMatrix.mat4.create(), matrix, translatedRect2);
+        gl.uniformMatrix4fv(mvMatrixUniform, false, combinedMatrixRect2);
         gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
 
-        // Increase angle
-        // rad_ang += 0.01;
+        console.log("Translation:", translation);
+        console.log("Rotation Angle:", rad_ang);
+        console.log("Scale:", scale);
+        console.log("Triangle Translation:", triangleTranslation);
 
-        // Call drawScene again in the next browser repaint
-        // requestAnimationFrame(function() {
-        //    drawScene(gl, rad_ang)
-        // });
+        var globalTranslated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), translation);
+
+        var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
+        var translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
+        var rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), triangleRotation);
+        var triangleMatrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translated, scaled);
+        triangleMatrix = glMatrix.mat4.multiply(triangleMatrix, rotated, triangleMatrix);
+        triangleMatrix = glMatrix.mat4.multiply(globalTranslated, triangleMatrix, triangleMatrix);
+
+        var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
+        gl.uniformMatrix4fv(mvMatrixUniform, false, triangleMatrix);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        var rect1Translation = [0.0, 0.0, 0.0];
+        var rect1Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect1Translation);
+        var rect1Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect1Rotation);
+        var rect1Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect1Translated, scaled);
+        rect1Matrix = glMatrix.mat4.multiply(rect1Matrix, rect1Rotated, rect1Matrix);
+        rect1Matrix = glMatrix.mat4.multiply(globalTranslated, rect1Matrix, rect1Matrix);
+
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect1Matrix);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
+
+        var rect2Translation = [0.0, 0.0, 0.0];
+        var rect2Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect2Translation);
+        var rect2Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect2Rotation);
+        var rect2Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect2Translated, scaled);
+        rect2Matrix = glMatrix.mat4.multiply(rect2Matrix, rect2Rotated, rect2Matrix);
+        rect2Matrix = glMatrix.mat4.multiply(globalTranslated, rect2Matrix, rect2Matrix);
+
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect2Matrix);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
     }
 
-    /**
-     * This function is used to initialize the vertex buffers
-     * @param {WebGLRenderingContext} gl 
-     */
-     function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2) {
-        // Crear un solo búfer
+    function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2) {
         var vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-
-        // Almacenar todas las coordenadas en el búfer
         var allVertices = new Float32Array([...verticesTriangulo, ...verticesRectangulo1, ...verticesRectangulo2]);
         gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW);
-
-        // Asignar las coordenadas a la variable a_Position
         var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
         gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(a_Position);
     }
-    
-    /**
-     * This function is used to initialize the shaders
-     * @param {WebGLRenderingContext} gl 
-     * @param {String} vs_source 
-     * @param {String} fs_source 
-     * @returns {Boolean}
-     */
-     function initShaders(gl, vs_source, fs_source) {
-        // Compile shaders
+
+    function initShaders(gl, vs_source, fs_source) {
         var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
         var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
-
-        // Create program
         var glProgram = gl.createProgram();
-
-        // Attach and link shaders to the program
         gl.attachShader(glProgram, vertexShader);
         gl.attachShader(glProgram, fragmentShader);
         gl.linkProgram(glProgram);
@@ -188,21 +175,11 @@
             alert("Unable to initialize the shader program");
             return false;
         }
-
-        // Use program
         gl.useProgram(glProgram);
         gl.program = glProgram;
-
         return true;
     }
 
-    /**
-     * This function is used to create a shader
-     * @param {WebGLRenderingContext} gl 
-     * @param {String} src 
-     * @param {Number} type 
-     * @returns {WebGLShader}
-     */
     function makeShader(gl, src, type) {
         var shader = gl.createShader(type);
         gl.shaderSource(shader, src);
@@ -215,8 +192,9 @@
     }
 
     function handleKeyPress(key) {
+        console.log("Tecla presionada:", key);
         var step = parseFloat(document.getElementById("step").value);
-        switch (key) {
+        switch (event.key) {
             case "ArrowLeft":
                 translation[0] -= step;
                 break;
@@ -229,11 +207,15 @@
             case "ArrowDown":
                 translation[1] -= step;
                 break;
+            
+            // Escala
             case "PageUp":
                 scale += step;
                 break;
             case "PageDown":
                 scale -= step;
+
+            // Traslación del tejado    
                 break;
             case "w":
                 triangleTranslation[1] += step;
@@ -247,7 +229,25 @@
             case "a":
                 triangleTranslation[0] -= step;
                 break;
+            
+            // Rotación
+            case "z":
+                triangleRotation += step;
+                break;
+            case "x":
+                rect1Rotation -= step;
+                break;
+            case "c":
+                rect2Rotation += step;
+                break;
         }
+        console.log("Translation:", translation);
+        console.log("Rotation Triangulo:", triangleRotation);
+        console.log("Rotacion Rectangulo 1:", rect1Rotation);
+        console.log("Rotacion Rectangulo 2:", rect2Rotation);
+        console.log("Scale:", scale);
+        console.log("Triangle Translation:", triangleTranslation);
     }
 </script>
+
 </html>
