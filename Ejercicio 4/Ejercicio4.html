@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio 4</title>
+    <meta name="author" content="Daniel Borja Fernández">
+    <meta name="email" content="d.borja.2021@alumnos.urjc.es">
+</head>
+
+<body onload="init()">
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+    <br>
+    Step: <input type="text" value="0.01" id="step">
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/3.4.2/gl-matrix-min.js"></script>
+
+<script id="shaderVs" type="x-shader/x-vertex">
+    attribute vec4 a_Position;
+    uniform mat4 u_Matrix;
+    void main() {
+        gl_Position = u_Matrix * a_Position;
+    }
+</script>
+
+<script id="shaderFs" type="x-shader/x-fragment">
+    precision mediump float;
+    void main() {
+        gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+    }
+</script>
+
+<script>
+
+    var scale = 1.0
+    var triangleTranslation = [0.0, 0.0, 0.0];
+    var triangleRotation = 0.0;
+    var rect1Rotation = 0.0;
+    var rect1Translation = [0.0, 0.0, 0.0]
+    var rect2Rotation = 0.0;
+    var rect2Translation = [0.0, 0.0, 0.0]
+
+    function init() {
+        // Vertices Triangulo
+        var verticesTriangulo = new Float32Array([
+            -0.75, 0.0, 0.0,
+            0.0, 0.5, 0.0,
+            0.75, 0.0, 0.0,
+        ]);
+
+        // Vertices Rectangulo Izquierda
+        var verticesRectangulo1 = new Float32Array([
+            -0.5, 0.0, 0.0,
+            -0.5, -0.75, 0.0,
+            -0.25, 0.0, 0.0,
+            -0.25, -0.75, 0.0,
+        ]);
+
+        // Vertices Rectangulo Derecha
+        var verticesRectangulo2 = new Float32Array([
+            0.25, 0.0, 0.0,
+            0.25, -0.75, 0.0,
+            0.5, 0.0, 0.0,
+            0.5, -0.75, 0.0,
+        ]);
+
+        var canvas = document.getElementById("myCanvas");
+        var gl = canvas.getContext("webgl");
+        if (!gl) {
+            console.log("Failed to get the rendering context for WebGL");
+            return;
+        }
+
+        var vs = document.getElementById('shaderVs').innerHTML;
+        var fs = document.getElementById('shaderFs').innerHTML;
+        if (!initShaders(gl, vs, fs)) {
+            console.log('Failed to initialize shaders.');
+            return;
+        }
+
+        initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2);
+
+        document.onkeydown = function (ev) {
+            handleKeyPress(ev.key);
+
+        };
+
+        canvas.addEventListener('keyPress', handleKeyPress);
+        drawScene(gl);
+    }
+
+    function drawScene(gl) {
+        gl.clearColor(0.0, 0.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        // Cambio de escala
+        var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
+
+        // Transformaciones Triangulo
+        var trianguloRotated = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), triangleRotation);
+        var translatedTriangle = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
+        var triangleMatrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translatedTriangle, scaled);
+        triangleMatrix = glMatrix.mat4.multiply(triangleMatrix, trianguloRotated, triangleMatrix);
+        triangleMatrix = glMatrix.mat4.multiply(translatedTriangle, triangleMatrix, triangleMatrix);
+
+        var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
+        gl.uniformMatrix4fv(mvMatrixUniform, false, triangleMatrix);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        // Transformaciones Rectangulo Izquierda
+        var rect1Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect1Translation);
+        var rect1Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect1Rotation);
+        var rect1Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect1Translated, scaled);
+        rect1Matrix = glMatrix.mat4.multiply(rect1Matrix, rect1Rotated, rect1Matrix);
+        rect1Matrix = glMatrix.mat4.multiply(translatedTriangle, rect1Matrix, rect1Matrix);
+
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect1Matrix);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
+
+        // Transformaciones Rectangulo Derecha
+        var rect2Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect2Translation);
+        var rect2Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect2Rotation);
+        var rect2Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect2Translated, scaled);
+        rect2Matrix = glMatrix.mat4.multiply(rect2Matrix, rect2Rotated, rect2Matrix);
+        rect2Matrix = glMatrix.mat4.multiply(translatedTriangle, rect2Matrix, rect2Matrix);
+
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect2Matrix);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
+
+        // Call drawScene again in the next browser repaint
+        requestAnimationFrame(function() {
+            drawScene(gl)
+        });
+    }
+
+    function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2) {
+        var vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        var allVertices = new Float32Array([...verticesTriangulo, ...verticesRectangulo1, ...verticesRectangulo2]);
+        gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW);
+        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
+        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_Position);
+    }
+
+    function initShaders(gl, vs_source, fs_source) {
+        var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
+        var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
+        var glProgram = gl.createProgram();
+        gl.attachShader(glProgram, vertexShader);
+        gl.attachShader(glProgram, fragmentShader);
+        gl.linkProgram(glProgram);
+        if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) {
+            alert("Unable to initialize the shader program");
+            return false;
+        }
+        gl.useProgram(glProgram);
+        gl.program = glProgram;
+        return true;
+    }
+
+    function makeShader(gl, src, type) {
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, src);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+            return;
+        }
+        return shader;
+    }
+
+    function handleKeyPress(key, gl) {
+        console.log("Tecla presionada:", key);
+        var step = parseFloat(document.getElementById("step").value);
+        switch (event.key) {
+            case "ArrowLeft":
+                triangleTranslation[0] -= step;
+                rect1Translation[0] -= step;
+                rect2Translation[0] -= step;
+
+                break;
+            case "ArrowRight":
+                triangleTranslation[0] += step;
+                rect1Translation[0] += step;
+                rect2Translation[0] += step;
+                break;
+            case "ArrowUp":
+                triangleTranslation[1] += step;
+                rect1Translation[1] += step;
+                rect2Translation[1] += step;
+                break;
+            case "ArrowDown":
+                triangleTranslation[1] -= step;
+                rect1Translation[1] -= step;
+                rect2Translation[1] -= step;
+                break;
+            
+            // Escala
+            case "PageUp":
+                scale += step;
+                break;
+            case "PageDown":
+                scale -= step;
+
+            // Traslación del tejado    
+                break;
+            case "w":
+                triangleTranslation[1] += step;
+                break;
+            case "s":
+                triangleTranslation[1] -= step;
+                break;
+            case "d":
+                triangleTranslation[0] += step;
+                break;
+            case "a":
+                triangleTranslation[0] -= step;
+                break;
+            
+            // Rotación
+            case "z":
+                triangleRotation += step;
+                break;
+            case "x":
+                rect1Rotation -= step;
+                break;
+            case "c":
+                rect2Rotation += step;
+                break;
+        }
+    }
+
+</script>
+
+</html>
