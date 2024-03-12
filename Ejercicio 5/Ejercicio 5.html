@@ -89,21 +89,32 @@
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         // Rotate
-        var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
-        var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-        gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
+        var casillaRotacion = document.getElementById("casillaRotacion");
+        if (casillaRotacion.checked){
+            var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
+            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
-        // Draw
-        gl.drawElements(gl.TRIANGLES, 6 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+            // Draw
+            gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
 
-        // Increase angle
-        rad_ang += 0.01;
 
-        // Call drawScene again in the next browser repaint
-        requestAnimationFrame(function() {
-			drawScene(gl, rad_ang)
-		});
+            // Increase angle
+            rad_ang += 0.01;
+        }else{
+            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+        gl.uniformMatrix4fv(uMvMatrix, false, glMatrix.mat4.create());
+
+        // Draw the fixed image (without rotation)
+        gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
     }
+
+    // Call drawScene again in the next browser repaint
+    requestAnimationFrame(function() {
+        drawScene(gl, rad_ang);
+    });
+    }
+
 
     /**
      * This function is used to initialize the vertex buffers
@@ -127,14 +138,14 @@
             -0.5, 0.0, 0.25,   1, 1, 0, // v8 
             -0.5, -0.75, 0.25,    1, 1, 0, // v9 
             -0.5, -0.75, -0.25,     1, 1, 0, // v10 
-            -0.5, -0.0, -0.25,    1, 1, 0, // v11
+            -0.5, 0.0, -0.25,    1, 1, 0, // v11
             // Right1 - Green 
             -0.25, 0.0, 0.25,    0, 1, 0, // v12 
             -0.25, -0.75, 0.25,     0, 1, 0, // v13 
             -0.25, -0.75, -0.25,      0, 1, 0, // v14 
             -0.25, 0.0, -0.25,     0, 1, 0, // v15 
             // Bottom1 - Light Blue 
-            -0.5, -0.75, -0.25,   0, 1, 1, // v16
+            -0.5, -0.75, -0.25,   0, 1, 1, // v16-
             -0.25, -0.75, -0.25,    0, 1, 1, // v17 
             -0.5, -0.75, 0.25,     0, 1, 1, // v18 
             -0.25, -0.75, 0.25,    0, 1, 1, // v19 
@@ -144,62 +155,62 @@
             -0.5, 0.0, 0.25,      0, 1, 1, // v22 
             -0.25, 0.0, 0.25,     0, 1, 1,  // v23 
 
-            // Columna Derecha
-            // Back2 - Blue 
-            0.25, 0.0, -0.25,    0, 0, 1, // v24 
-            0.25, -0.75, -0.25,    0, 0, 1, // v25 
-            0.5, 0.0, -0.25,     0, 0, 1, // v26 
-            0.5, -0.75, -0.25,    0, 0, 1, // v27 
-            // Front2 - Red
-            0.25, 0.0, 0.25,    1, 0, 0, // v28 
-            0.25, -0.75, 0.25,     1, 0, 0, // v29 
-            0.5, 0.0, 0.25,      1, 0, 0, // v30 
-            0.5, -0.75, 0.25,     1, 0, 0, // v31
-            // Left2 – Yellow 
-            0.25, 0.0, -0.25,   1, 1, 0, // v32
-            0.25, -0.75, -0.25,    1, 1, 0, // v33 
-            0.25, 0.0, 0.25,     1, 1, 0, // v34 
-            0.25, -0.75, 0.25,    1, 1, 0, // v35
-            // Right2 - Green 
-            0.5, -0.75, -0.25,    0, 1, 0, // v36
-            0.5, 0.0, -0.25,     0, 1, 0, // v37 
-            0.5, -0.75, 0.25,      0, 1, 0, // v38 
-            0.5, 0.0, 0.25,     0, 1, 0, // v39
-            // Bottom2 - Light Blue 
-            0.25, -0.75, -0.25,   0, 1, 1, // v40
-            0.5, 0.0, -0.25,    0, 1, 1, // v41 
-            0.25, -0.75, 0.25,     0, 1, 1, // v42 
-            0.5, 0.0, 0.25,    0, 1, 1, // v43 
-            // Top2- Light Blue 
-            0.25, 0.0, -0.25,    0, 1, 1, // v44
-            0.5, -0.75, -0.25,     0, 1, 1, // v45 
-            0.25, 0.0, 0.25,      0, 1, 1, // v46
-            0.5, -0.75, 0.25,     0, 1, 1,  // v47 
-
             // Piramide Tejado
             // Back3 - Blue 
-            -0.75, 0.0, -0.25,    0, 0, 1, // v48 
-            0.0, 0.5, -0.25,    0, 0, 1, // v49
-            0.75, 0.0, -0.25,     0, 0, 1, // v50 
+            -0.75, 0.0, -0.25,    0, 0, 1, // v24 
+            0.0, 0.5, 0.0,    0, 0, 1, // v25
+            0.75, 0.0, -0.25,     0, 0, 1, // v26 
             // Front3 - Red
-            -0.75, 0.0, 0.25,    1, 0, 0, // v51 
-            0.0, 0.5, 0.25,     1, 0, 0, // 52 
-            0.75, 0.0, 0.25,      1, 0, 0, // v53 
+            -0.75, 0.0, 0.25,    1, 0, 0, // v27
+            0.0, 0.5, 0.0,     1, 0, 0, // v28
+            0.75, 0.0, 0.25,      1, 0, 0, // v29
             // Left3 – Yellow 
-            -0.75, 0.0, -0.25,   1, 1, 0, // v54
-            -0.75, 0.0, 0.25,    1, 1, 0, // v55 
-            0.0, 0.5, -0.25,     1, 1, 0, // v56 
-            0.0, 0.5, 0.25,    1, 1, 0, // v57
+            -0.75, 0.0, -0.25,   1, 1, 0, // v30
+            -0.75, 0.0, 0.25,    1, 1, 0, // v31 
+            0.0, 0.5, 0.0,     1, 1, 0, // v32 
             // Right3 - Green 
-            0.0, 0.5, -0.25,    0, 1, 0, // v58
-            0.5, 0.0, -0.25,     0, 1, 0, // v59 
-            0.5, -0.75, 0.25,      0, 1, 0, // v60 
-            0.5, 0.0, 0.25,     0, 1, 0, // v61
+            0.0, 0.5, 0.0,    0, 1, 0, // v33
+            0.75, 0.0, 0.25,      0, 1, 0, // v34
+            0.75, 0.0, -0.25,     0, 1, 0, // v35
             // Bottom2 - Light Blue 
-            0.25, -0.75, -0.25,   0, 1, 1, // v62
-            0.0, 0.5, 0.25,    0, 1, 1, // v63
-            0.75, 0.0, 0.25,     0, 1, 1, // v64 
-            0.75, 0.0, -0.25,    0, 1, 1, // v65 
+            0.75, 0.0, -0.25,   0, 1, 1, // v36
+            0.75, 0.0, 0.25,    0, 1, 1, // v37
+            -0.75, 0.0, 0.25,     0, 1, 1, // v38
+            -0.75, 0.0, -0.25,    0, 1, 1, // v39
+
+            // Columna Derecha
+            // Back2 - Blue 
+            0.5, 0.0, -0.25,     0, 0, 1, // v40
+            0.5, -0.75, -0.25,    0, 0, 1, // v41
+            0.25, -0.75, -0.25,   0, 0, 1, // v42
+            0.25, 0.0, -0.25,    0, 0, 1, // v43
+            // Front2 - Red
+            0.5, 0.0, 0.25,    1, 0, 0, // v44
+            0.5, -0.75, 0.25,     1, 0, 0, // v45
+            0.25, -0.75, 0.25,      1, 0, 0, // v46
+            0.25, 0.0, 0.25,     1, 0, 0, // v47
+            // Left2 – Yellow 
+            0.25, 0.0, 0.25,   1, 1, 0, // v48
+            0.25, -0.75, 0.25,    1, 1, 0, // v49
+            0.25, -0.75, -0.25,     1, 1, 0, // v50
+            0.25, 0.0, -0.25,    1, 1, 0, // v51
+            // Right2 - Green 
+            0.5, 0.0, 0.25,    0, 1, 0, // v52
+            0.5, -0.75, 0.25,     0, 1, 0, // v53
+            0.5, -0.75, -0.25,    0, 1, 0, // v54
+            0.5, 0.0, -0.25,     0, 1, 0, // v55
+            // Bottom2 - Light Blue 
+            0.25, -0.75, -0.25,   0, 1, 1, // v56
+            0.5, 0.0, -0.25,    0, 1, 1, // v57
+            0.25, -0.75, 0.25,     0, 1, 1, // v58 
+            0.5, 0.0, 0.25,    0, 1, 1, // v59
+            // Top2- Light Blue 
+            0.25, 0.0, -0.25,    0, 1, 1, // v60
+            0.5, -0.75, -0.25,     0, 1, 1, // v61 
+            0.25, 0.0, 0.25,      0, 1, 1, // v62
+            0.5, -0.75, 0.25,     0, 1, 1,  // v63 
+
+
         ];
 
         // Indexes (for drawing squares using triangles)
@@ -220,25 +231,39 @@
             16, 18, 19,
 
             20, 21, 22,
-            20, 22, 23,
+            21, 22, 23,
 
             24, 25, 26,
-            24, 26, 27,
 
             27, 28, 29,
-            27,29, 30,
 
-            31, 32, 33,
-            31, 34, 35,
+            30, 31, 32,
+            
+            33, 34, 35,
 
             36, 37, 38,
-            36, 38, 39,
+            36, 39, 40,
+
+            36, 37, 38,
+            47, 38, 39,
 
             40, 41, 42,
-            40, 43, 44,
+            40, 42, 43,
 
-            45, 46, 47,
-            45, 48, 49
+            44, 45, 46,
+            44, 46, 47,
+
+            48, 49, 50,
+            48, 50, 51,
+
+            52, 53, 54,
+            52, 54, 55,
+
+            56, 57, 58,
+            57, 58, 59,
+
+            60, 61, 62,
+            61, 62, 63
 
         ];
 
@@ -339,7 +364,7 @@
 <body onload="init()">
     <canvas id="myCanvas" width="640" height="480"></canvas><br>
     <b>Rotation</b>
-    <input type="checkbox" name="rotation" checked>
+    <input id="casillaRotacion" type="checkbox" name="rotation" checked>
     <input type="range" id="speed" min="1" max="3" value="1" step="1"> Speed<br>
     <b>WebGL primitive</b>
     <input type="radio" name="primitive" value="triangles" checked> Triangles
