@@ -87,27 +87,35 @@
     function drawScene(gl, rad_ang) {
         // Clear
         gl.clear(gl.COLOR_BUFFER_BIT);
-
-        // Rotate
+        
+        // Rotacion
         var casillaRotacion = document.getElementById("casillaRotacion");
-        if (casillaRotacion.checked){
-            var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
-            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
+                if (casillaRotacion.checked){
+                    // Si la casilla Rotacion activada
+                    var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
+                    var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+                    gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
-            // Draw
-            gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+                    // Guardar la posicion actual
+                    var mvMatrixGuardada = mvMatrix;
+
+                    // Draw
+                    gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
 
 
-            // Increase angle
-            rad_ang += 0.01;
-        }else{
-            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-        gl.uniformMatrix4fv(uMvMatrix, false, glMatrix.mat4.create());
+                    // Incremento angulo con la velocidad
+                    var speed = parseFloat(document.getElementById('speed').value);
+                    rad_ang += 0.01 *speed;
+                }else{
+                    // Si la casilla Rotacion desactivada
+                    if(mvMatrixGuardada){
+                        var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+                        gl.uniformMatrix4fv(uMvMatrix, false, mvMatrixGuardada);
+                    }
 
-        // Draw the fixed image (without rotation)
-        gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
-    }
+                    // Dibujar sin rotacion
+                    gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+            }
 
     // Call drawScene again in the next browser repaint
     requestAnimationFrame(function() {
@@ -157,26 +165,26 @@
 
             // Piramide Tejado
             // Back3 - Blue 
-            -0.75, 0.0, -0.25,    0, 0, 1, // v24 
+            -0.75, 0.0, -0.5,    0, 0, 1, // v24 
             0.0, 0.5, 0.0,    0, 0, 1, // v25
-            0.75, 0.0, -0.25,     0, 0, 1, // v26 
+            0.75, 0.0, -0.5,     0, 0, 1, // v26 
             // Front3 - Red
-            -0.75, 0.0, 0.25,    1, 0, 0, // v27
+            -0.75, 0.0, 0.5,    1, 0, 0, // v27
             0.0, 0.5, 0.0,     1, 0, 0, // v28
-            0.75, 0.0, 0.25,      1, 0, 0, // v29
+            0.75, 0.0, 0.5,      1, 0, 0, // v29
             // Left3 – Yellow 
-            -0.75, 0.0, -0.25,   1, 1, 0, // v30
-            -0.75, 0.0, 0.25,    1, 1, 0, // v31 
+            -0.75, 0.0, -0.5,   1, 1, 0, // v30
+            -0.75, 0.0, 0.5,    1, 1, 0, // v31 
             0.0, 0.5, 0.0,     1, 1, 0, // v32 
             // Right3 - Green 
             0.0, 0.5, 0.0,    0, 1, 0, // v33
-            0.75, 0.0, 0.25,      0, 1, 0, // v34
-            0.75, 0.0, -0.25,     0, 1, 0, // v35
+            0.75, 0.0, 0.5,      0, 1, 0, // v34
+            0.75, 0.0, -0.5,     0, 1, 0, // v35
             // Bottom2 - Light Blue 
-            0.75, 0.0, -0.25,   0, 1, 1, // v36
-            0.75, 0.0, 0.25,    0, 1, 1, // v37
-            -0.75, 0.0, 0.25,     0, 1, 1, // v38
-            -0.75, 0.0, -0.25,    0, 1, 1, // v39
+            0.75, 0.0, -0.5,   0, 1, 1, // v36
+            0.75, 0.0, 0.5,    0, 1, 1, // v37
+            -0.75, 0.0, 0.5,     0, 1, 1, // v38
+            -0.75, 0.0, -0.5,    0, 1, 1, // v39
 
             // Columna Derecha
             // Back2 - Blue 
