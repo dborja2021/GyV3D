@@ -1,646 +1,700 @@
+<!-- 
+   Autor: Daniel Borja Fernández
+   Partes implementadas:
+   - Funcionalidad básica
+   - Funcionalidad avanzada:
+      - Variación y puntuación
+      - Frecuencia aparición potenciadores
+   - Mejoras:
+      - Animación (las esferas rotan al moverse para simular que ruedan)
+      - Potenciadores diferentes con frecuencia de aparicion:
+         * +10 puntos
+         * +1 vida
+ -->
+
 <!DOCTYPE html>
 <html>
 
 <head>
-   <title>Práctica Final</title>
+   <title>Practica Final</title>
    <meta name="author" content="Daniel Borja Fernández">
    <meta name="email" content="d.borja.2021@alumnos.urjc.es">
+   <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.148.0/three.min.js"></script>
 
 <script>
-   /**
-    * Three.js: Collision detection
-    * 
-    * This example shows how to detect collision between a sphere and a cube.
-    */
-   
-   // Global variables
-   var score = 0;
-   var scoreSpheres = [];
-   var renderer = new THREE.WebGLRenderer({
-         antialias : true
-      });
-   var initialSpherePosition = {x: 0, y: -20, z: 1};
-   var powerActive = false;
-   var lives = 3;
-   var direction = { x: -1, y: 0 };
-   var stepX = 0.4;
-   var stepY = 0.4;
-   var stepXGhostR = 0.1;
-   var stepYGhostR = 0.2;
-   var stepXGhostG = 0.1;
-   var stepYGhostG = 0.2;
-   var stepXGhostB = 0.1;
-   var stepYGhostB = 0.2;
-   var stepXGhosts = [stepXGhostR, stepXGhostG, stepXGhostB];
-   var stepYGhosts = [stepXGhostR, stepXGhostG, stepXGhostB];
-   var ghostTextureActive = "fantasmaVerde.jpg";
 
-   var ghostR = getSphere("ghostR", 0, -0.5, 1);
-   var ghostG = getSphere("ghostG", -2.5, 0.5, 1);
-   var ghostB = getSphere("ghostB", 2.5, 0.5, 1);
-   var ghosts = [ghostR, ghostG, ghostB];
+var currentTimeout = null;
+var score = 0;
+var lives = 3;
+var scoreSpheres = [];
+var renderer = new THREE.WebGLRenderer({
+      antialias : true
+   });
+var initialSpherePosition = {x: 0, y: -20, z: 1};
+var powerActive = false;
 
+var direction = { x: -1, y: 0 };
+var stepX = 0.4;
+var stepY = 0.4;
+var stepXGhostR = 0.1;
+var stepYGhostR = 0.2;
+var stepXGhostG = 0.1;
+var stepYGhostG = 0.2;
+var stepXGhostB = 0.1;
+var stepYGhostB = 0.2;
+var stepXGhosts = [stepXGhostR, stepXGhostG, stepXGhostB];
+var stepYGhosts = [stepXGhostR, stepXGhostG, stepXGhostB];
+var ghostTextureActive = "fantasmaVerde.jpg";
 
-   // Añadir event listener para detectar las pulsaciones de teclas
-   document.addEventListener("keydown", function(event) {
-   // Detectar qué tecla de flecha se ha presionado
+var ghostR = getSphere("ghostR", 0, -0.5, 1);
+var ghostG = getSphere("ghostG", -2.5, 0.5, 1);
+var ghostB = getSphere("ghostB", 2.5, 0.5, 1);
+var ghosts = [ghostR, ghostG, ghostB];
+
+document.addEventListener("keydown", function(event) { // Añadir event listener para detectar las pulsaciones de teclas
    switch(event.key) {
          case "ArrowLeft":
-            // console.log("izquierda");
             direction.x = -1;
             direction.y = 0;
             break;
          case "ArrowUp":
-         // console.log("arriba");
             direction.x = 0;
             direction.y = 1 ;
             break;
          case "ArrowRight":
-         // console.log("derecha");
             direction.x = 1;
             direction.y = 0;
             break;
          case "ArrowDown":
-         // console.log("abajo");
             direction.x = 0;
             direction.y = -1;
             break;
       }
-   });  
+}); 
 
-      
-   /**
-    * This function is used to initialize the scene
-    */
-   function init() {
-      scoreSpheres = [];
-      
-      var scene = new THREE.Scene();
-      var sceneWidth = window.innerWidth - 20;
-      var sceneHeight = window.innerHeight - 20;
+function init() {
+   var endedGame = false;
 
-      var camera = new THREE.PerspectiveCamera(90, sceneWidth / sceneHeight, 0.01, 100);
-      camera.position.set(0, 0, 30); // Set the initial Camera Position.
-      camera.lookAt(scene.position);
-      
+   scoreSpheres = [];
+   
+   var scene = new THREE.Scene();
+   var sceneWidth = window.innerWidth - 20;
+   var sceneHeight = window.innerHeight - 20;
 
-      renderer.shadowMap.enabled = true;
-      renderer.setSize(sceneWidth, sceneHeight);
-      document.body.appendChild(renderer.domElement);
+   var camera = new THREE.PerspectiveCamera(90, sceneWidth / sceneHeight, 0.01, 100);
+   camera.position.set(0, -5, 35); // Set the initial Camera Position.
+   camera.lookAt(scene.position);
+   
+   renderer.shadowMap.enabled = true;
+   renderer.setSize(sceneWidth, sceneHeight);
+   document.body.appendChild(renderer.domElement);
+   
+   var light = getLight();
+   var leftBorder = getBorder("left", 1, 50, 2, -25, 0, 0);
+   var rightBorder = getBorder("right", 1, 50, 2, 25, 0, 0);
+   var topBorder = getBorder("top", 49, 1, 2, 0, 24.5, 0);
+   var downBorder = getBorder("down", 49, 1, 2, 0, -24.5, 0);
 
-      var light = getLight();
-      var leftBorder = getBorder("left", 1, 50, 2, -25, 0, 0);
-      var rightBorder = getBorder("right", 1, 50, 2, 25, 0, 0);
-      var topBorder = getBorder("top", 49, 1, 2, 0, 24.5, 0);
-      var downBorder = getBorder("down", 49, 1, 2, 0, -24.5, 0);
+   var pequenoIzqTop = getBorder("top", 3, 1, 2, -20, 0, 0);
+   var pequenoIzqLeft = getBorder("left", 3, 1, 2, -20, 0, 0);
 
-      var pequenoIzqTop = getBorder("top", 3, 1, 2, -20, 0, 0);
-      var pequenoIzqLeft = getBorder("left", 3, 1, 2, -20, 0, 0);
+   var pequenoDerTop = getBorder("top", 3, 1, 2, 20, 0, 0);
+   var pequenoDerLeft = getBorder("left", 3, 1, 2, 20, 0, 0);
 
-      var pequenoDerTop = getBorder("top", 3, 1, 2, 20, 0, 0);
-      var pequenoDerLeft = getBorder("left", 3, 1, 2, 20, 0, 0);
+   var interiorTopDer1 = getBorder("top", 10, 1, 2, 10, 20, 0);
+   var interiorTopDer1Right = getBorder("right", 10, 1, 2, 10, 20, 0);
+   var interiorDownDer1 = getBorder("top", 10, 1, 2, 10, -20, 0);
+   var interiorDownDer1Right = getBorder("right", 10, 1, 2, 10, -20, 0);
+   var interiorLeftDer1 = getBorder("left",1, 40, 2, 14.5, 0, 0);
 
-      var interiorTopDer1 = getBorder("top", 10, 1, 2, 10, 20, 0);
-      var interiorTopDer1Right = getBorder("right", 10, 1, 2, 10, 20, 0);
-      var interiorDownDer1 = getBorder("top", 10, 1, 2, 10, -20, 0);
-      var interiorDownDer1Right = getBorder("right", 10, 1, 2, 10, -20, 0);
-      var interiorLeftDer1 = getBorder("left",1, 40, 2, 14.5, 0, 0);
+   var interiorTopIzq1 = getBorder("top",10, 1, 2, -10, 20, 0);
+   var interiorTopIzq1Left = getBorder("left",10, 1, 2, -10, 20, 0);
+   var interiorDownIzq1 = getBorder("top",10, 1, 2, -10, -20, 0);
+   var interiorDownIzq1Left = getBorder("legt",10, 1, 2, -10, -20, 0);
+   var interiorLeftIzq1 = getBorder("left",1, 40, 2, -14.5, 0, 0);
 
-      var interiorTopIzq1 = getBorder("top",10, 1, 2, -10, 20, 0);
-      var interiorTopIzq1Left = getBorder("left",10, 1, 2, -10, 20, 0);
-      var interiorDownIzq1 = getBorder("top",10, 1, 2, -10, -20, 0);
-      var interiorDownIzq1Left = getBorder("legt",10, 1, 2, -10, -20, 0);
-      var interiorLeftIzq1 = getBorder("left",1, 40, 2, -14.5, 0, 0);
+   var interiorTopDer2 = getBorder("top", 20, 1, 2, 0, 15, 0);
+   var interiorLeftIzq2 = getBorder("left",1, 10, 2, -9.5, 10, 0);
+   var interiorLeftDer2 = getBorder("left",1, 10, 2, 9.5, 10, 0);
 
-      var interiorTopDer2 = getBorder("top", 20, 1, 2, 0, 15, 0);
-      var interiorLeftIzq2 = getBorder("left",1, 10, 2, -9.5, 10, 0);
-      var interiorLeftDer2 = getBorder("left",1, 10, 2, 9.5, 10, 0);
+   var interiorDownDown2 = getBorder("down", 20, 1, 2, 0, -15, 0);
+   var interiorDownIzq2 = getBorder("left",1, 10, 2, -9.5, -10, 0);
+   var interiorDownDer2 = getBorder("left",1, 10, 2, 9.5, -10, 0);
 
-      var interiorDownDown2 = getBorder("down", 20, 1, 2, 0, -15, 0);
-      var interiorDownIzq2 = getBorder("left",1, 10, 2, -9.5, -10, 0);
-      var interiorDownDer2 = getBorder("left",1, 10, 2, 9.5, -10, 0);
+   var interiorCenterDown2 = getBorder("down", 10, 1, 2, 0, -2.5, 0);
+   var interiorCenterIzq2 = getBorder("left",1, 5, 2, -4.5, 0, 0);
+   var interiorCenterIzq2Top = getBorder("top",1, 5, 2, -4.5, 0, 0);
+   var interiorCenterDer2 = getBorder("left",1, 5, 2, 4.5, 0, 0);
+   var interiorCenterDer2Top = getBorder("top",1, 5, 2, 4.5, 0, 0);
 
-      var interiorCenterDown2 = getBorder("down", 10, 1, 2, 0, -2.5, 0);
-      var interiorCenterIzq2 = getBorder("left",1, 5, 2, -4.5, 0, 0);
-      var interiorCenterIzq2Top = getBorder("top",1, 5, 2, -4.5, 0, 0);
-      var interiorCenterDer2 = getBorder("left",1, 5, 2, 4.5, 0, 0);
-      var interiorCenterDer2Top = getBorder("top",1, 5, 2, 4.5, 0, 0);
+   var sphere = getSphere("sphere", 0, -20, 1);
+   var floor = getFloor();
 
-      var sphere = getSphere("sphere", 0, -20, 1);
-      var floor = getFloor();
+   var powerUp1 = getSphere("powerUp", -20, 20, 1.2);
+   var powerUp2 = getSphere("powerUp", 20, 20, 1.2);
+   var powerUp3 = getSphere("powerUp", -20, -20, 1.2);
+   var powerUp4 = getSphere("powerUp", 20, -20, 1.2);
 
+   var powers = [powerUp1, powerUp2, powerUp3, powerUp4];
 
+   var extraLive = getSphere("extraLive", 0, 10, 1.2);
+   var extraPoint = getSphere("extraPoint", 0, -10, 1.2);
+   var extras = [extraLive, extraPoint];
 
-      var powerUp1 = getSphere("powerUp1", -20, 20, 1.2);
-      var powerUp2 = getSphere("powerUp2", 20, 20, 1.2);
-      var powerUp3 = getSphere("powerUp3", -20, -20, 1.2);
-      var powerUp4 = getSphere("powerUp4", 20, -20, 1.2);
+   scene.add(light);
+   scene.add(leftBorder);
+   scene.add(rightBorder);
+   scene.add(topBorder);
+   scene.add(downBorder);
+   scene.add(pequenoIzqTop);
+   scene.add(pequenoIzqLeft);
+   scene.add(pequenoDerTop);
+   scene.add(pequenoDerLeft);
+   scene.add(interiorTopDer1);
+   scene.add(interiorDownDer1);
+   scene.add(interiorLeftDer1);
+   scene.add(interiorDownIzq1);
+   scene.add(interiorTopIzq1);
+   scene.add(interiorLeftIzq1);
+   scene.add(interiorTopDer2);
+   scene.add(interiorLeftIzq2);
+   scene.add(interiorLeftDer2);
+   scene.add(interiorDownDown2);
+   scene.add(interiorDownIzq2);
+   scene.add(interiorDownDer2);
+   scene.add(interiorCenterDown2);
+   scene.add(interiorCenterIzq2);
+   scene.add(interiorCenterDer2);
+   scene.add(interiorTopDer1Right);
+   scene.add(interiorDownDer1Right);
+   scene.add(interiorTopIzq1Left);
+   scene.add(interiorDownIzq1Left);
+   scene.add(interiorCenterIzq2Top);
+   scene.add(interiorCenterDer2Top);
 
-      var powers = [powerUp1, powerUp2, powerUp3, powerUp4];
+   scene.add(sphere);
+   scene.add(floor);
 
-      
-      scene.add(light);
-      scene.add(leftBorder);
-      scene.add(rightBorder);
-      scene.add(topBorder);
-      scene.add(downBorder);
-      scene.add(pequenoIzqTop);
-      scene.add(pequenoIzqLeft);
-      scene.add(pequenoDerTop);
-      scene.add(pequenoDerLeft);
-      scene.add(interiorTopDer1);
-      scene.add(interiorDownDer1);
-      scene.add(interiorLeftDer1);
-      scene.add(interiorDownIzq1);
-      scene.add(interiorTopIzq1);
-      scene.add(interiorLeftIzq1);
-      scene.add(interiorTopDer2);
-      scene.add(interiorLeftIzq2);
-      scene.add(interiorLeftDer2);
-      scene.add(interiorDownDown2);
-      scene.add(interiorDownIzq2);
-      scene.add(interiorDownDer2);
-      scene.add(interiorCenterDown2);
-      scene.add(interiorCenterIzq2);
-      scene.add(interiorCenterDer2);
-      scene.add(interiorTopDer1Right);
-      scene.add(interiorDownDer1Right);
-      scene.add(interiorTopIzq1Left);
-      scene.add(interiorDownIzq1Left);
-      scene.add(interiorCenterIzq2Top);
-      scene.add(interiorCenterDer2Top);
+   scene.add(ghostR);
+   scene.add(ghostG);
+   scene.add(ghostB);
 
-      scene.add(sphere);
-      scene.add(floor);
+   scene.add(powerUp1);
+   scene.add(powerUp2);
+   scene.add(powerUp3);
+   scene.add(powerUp4);
 
-      scene.add(ghostR);
-      scene.add(ghostG);
-      scene.add(ghostB);
+   scene.add(extraLive);
+   scene.add(extraPoint);
 
-      scene.add(powerUp1);
-      scene.add(powerUp2);
-      scene.add(powerUp3);
-      scene.add(powerUp4);
-
-      // Generar esferas en fila a lo largo del eje X
-      var numEsferas = 14; // Número total de esferas
-      var separacion = 3.1; // Separación entre las esferas
-      var filaY = -22; // Posición Y donde quieres que estén las esferas
-      var filaYSuperior = 22; // Posición Y de la fila superior
-      var posXCentral = 0; // Posición X de la esfera central
-      var anchoTotal = (numEsferas - 1) * separacion; // Ancho total de las esferas menos la central
-      
-      // Calcular la posición X de la esfera más a la izquierda
-      var posXIzquierda = posXCentral - anchoTotal / 2;
-      
-      // Recorrer cada esfera y calcular su posición
-      for (var i = 0; i < numEsferas; i++) {
-         // Calcular la posición X de la esfera actual
-         var posX = posXIzquierda + i * separacion;
-         // Generar la esfera en la posición calculada para la fila inferior
-         var esfera = getSphere("score" + i, posX, filaY, 1);
-         // Generar la esfera en la posición calculada para la fila superior
-         var esferaSuperior = getSphere("score" + i, posX, filaYSuperior, 1);
-         // Ajustar el tamaño de las esferas
-         esfera.scale.set(0.5, 0.5, 0.5);
-         esferaSuperior.scale.set(0.5, 0.5, 0.5);
-         // Añadir las esferas a la escena
-         scene.add(esfera);
-         scene.add(esferaSuperior);
-         // Agregar la esfera al array
-         scoreSpheres.push(esfera);
-         scoreSpheres.push(esferaSuperior);
-      }
-      var posXIzquierdaInterno = posXIzquierda + 8.5 ;
-      for (var i = 0; i < numEsferas - 4; i++) {
-         // Calcular la posición X de la esfera actual
-         var posX = posXIzquierdaInterno + i * (separacion - 0.5);
-         // Generar la esfera en la posición calculada para la fila inferior
-         var esfera = getSphere("score" + i, posX, filaY + 5, 1);
-         // Generar la esfera en la posición calculada para la fila superior
-         var esferaSuperior = getSphere("score" + i, posX, filaYSuperior - 5, 1);
-         // Ajustar el tamaño de las esferas
-         esfera.scale.set(0.5, 0.5, 0.5);
-         esferaSuperior.scale.set(0.5, 0.5, 0.5);
-         // Añadir las esferas a la escena
-         scene.add(esfera);
-         scene.add(esferaSuperior);
-         // Agregar la esfera al array
-         scoreSpheres.push(esfera);
-         scoreSpheres.push(esferaSuperior);
-      }
-
-      // Generar esferas en columnas a lo largo del eje Y
-      var numEsferas = 12; // Número total de esferas
-      var separacion = 3.1; // Separación entre las esferas
-      var columnaX = -20; // Posición X donde quieres que estén las esferas
-      var columnaXRight = 20; // Posición X de la columna derecha
-      var posYCentral = 0; // Posición Y de la esfera central
-      var altoTotal = (numEsferas - 1) * separacion; // Alto total de las esferas menos la central
-
-      // Calcular la posición Y de la esfera más abajo
-      var posYAbajo = posYCentral - altoTotal / 2;
-
-      // Recorrer cada esfera y calcular su posición
-      for (var i = 0; i < numEsferas; i++) {
-         // Calcular la posición Y de la esfera actual
-         var posY = posYAbajo + i * separacion;
-         // Generar la esfera en la posición calculada para la columna izquierda
-         var esfera = getSphere("score" + i, columnaX, posY, 1);
-         // Generar la esfera en la posición calculada para la columna derecha
-         var esferaDerecha = getSphere("score" + i, columnaXRight, posY, 1);
-         // Ajustar el tamaño de las esferas
-         esfera.scale.set(0.5, 0.5, 0.5);
-         esferaDerecha.scale.set(0.5, 0.5, 0.5);
-         // Añadir las esferas a la escena
-         scene.add(esfera);
-         scene.add(esferaDerecha);
-         // Agregar la esfera al array
-         scoreSpheres.push(esfera);
-         scoreSpheres.push(esferaDerecha);
-      }
-
-      // Generar esferas en columnas a lo largo del eje Y
-      numEsferas = 10; // Número total de esferas
-      separacion = 3.1; // Separación entre las esferas
-      columnaX = -11.8; // Posición X donde quieres que estén las esferas
-      columnaXRight = 11.8; // Posición X de la columna derecha
-      posYCentral = 0; // Posición Y de la esfera central
-      altoTotal = (numEsferas - 1) * separacion; // Alto total de las esferas menos la central
-
-      // Calcular la posición Y de la esfera más abajo
-      posYAbajo = posYCentral - altoTotal / 2;
-
-      // Recorrer cada esfera y calcular su posición
-      for (var i = 0; i < numEsferas; i++) {
-         // Calcular la posición Y de la esfera actual
-         var posY = posYAbajo + i * separacion;
-         // Generar la esfera en la posición calculada para la columna izquierda
-         var esfera = getSphere("score" + i, columnaX, posY, 1);
-         // Generar la esfera en la posición calculada para la columna derecha
-         var esferaDerecha = getSphere("score" + i, columnaXRight, posY, 1);
-         // Ajustar el tamaño de las esferas
-         esfera.scale.set(0.5, 0.5, 0.5);
-         esferaDerecha.scale.set(0.5, 0.5, 0.5);
-         // Añadir las esferas a la escena
-         scene.add(esfera);
-         scene.add(esferaDerecha);
-         // Agregar la esfera al array
-         scoreSpheres.push(esfera);
-         scoreSpheres.push(esferaDerecha);
-      }
-
-      
-
-
-
-      var borders = [ leftBorder, rightBorder, topBorder, downBorder, pequenoIzqTop, pequenoIzqLeft, pequenoDerTop, pequenoDerLeft, interiorTopDer1, interiorTopIzq1, interiorDownDer1, interiorLeftDer1, interiorDownIzq1, interiorLeftIzq1,
-      interiorTopDer2, interiorLeftIzq2, interiorLeftDer2, interiorDownDown2, interiorDownIzq2, interiorDownDer2, interiorCenterDown2, interiorCenterIzq2, interiorCenterDer2, interiorTopDer1Right, interiorDownDer1Right, interiorTopIzq1Left, interiorDownIzq1Left, interiorCenterIzq2Top,interiorCenterDer2Top];
-
-      animate(sphere, ghosts, powers, borders, renderer, scene, camera);
-      document.getElementById("life-count").innerHTML = "Lives: " + lives;
-      document.getElementById("score-count").innerHTML = "Score: " + score;
-      document.getElementById("restart-button").addEventListener("click", function() {
-    reset();
-});
-
+   // Generar esferas en fila a lo largo del eje X
+   var numEsferas = 14; // Número total de esferas
+   var separacion = 3.1; // Separación entre las esferas
+   var filaY = -22; // Posición Y donde quieres que estén las esferas
+   var filaYSuperior = 22; // Posición Y de la fila superior
+   var posXCentral = 0; // Posición X de la esfera central
+   var anchoTotal = (numEsferas - 1) * separacion; // Ancho total de las esferas menos la central
+   
+   // Calcular la posición X de la esfera más a la izquierda
+   var posXIzquierda = posXCentral - anchoTotal / 2;
+   
+   // Recorrer cada esfera y calcular su posición
+   for (var i = 0; i < numEsferas; i++) {
+      // Calcular la posición X de la esfera actual
+      var posX = posXIzquierda + i * separacion;
+      // Generar la esfera en la posición calculada para la fila inferior
+      var esfera = getSphere("score" , posX, filaY, 1);
+      // Generar la esfera en la posición calculada para la fila superior
+      var esferaSuperior = getSphere("score" , posX, filaYSuperior, 1);
+      // Ajustar el tamaño de las esferas
+      esfera.scale.set(0.5, 0.5, 0.5);
+      esferaSuperior.scale.set(0.5, 0.5, 0.5);
+      // Añadir las esferas a la escena
+      scene.add(esfera);
+      scene.add(esferaSuperior);
+      // Agregar la esfera al array
+      scoreSpheres.push(esfera);
+      scoreSpheres.push(esferaSuperior);
    }
 
-   function animate(sphere, ghosts, powers, borders, renderer, scene, camera) {
-      updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts);
-      checkCollision(sphere, borders, ghosts, powers, scene);
-      checkCollisionGhosts(ghosts, borders);
+   var posXIzquierdaInterno = posXIzquierda + 8.5 ;
+   for (var i = 0; i < numEsferas - 4; i++) {
+      // Calcular la posición X de la esfera actual
+      var posX = posXIzquierdaInterno + i * (separacion - 0.5);
+      // Generar la esfera en la posición calculada para la fila inferior
+      var esfera = getSphere("score" , posX, filaY + 5, 1);
+      // Generar la esfera en la posición calculada para la fila superior
+      var esferaSuperior = getSphere("score" , posX, filaYSuperior - 5, 1);
+      // Ajustar el tamaño de las esferas
+      esfera.scale.set(0.5, 0.5, 0.5);
+      esferaSuperior.scale.set(0.5, 0.5, 0.5);
+      // Añadir las esferas a la escena
+      scene.add(esfera);
+      scene.add(esferaSuperior);
+      // Agregar la esfera al array
+      scoreSpheres.push(esfera);
+      scoreSpheres.push(esferaSuperior);
+   }
 
-      if(powers.length != 0 || powerActive == true ){
-         for (var i = 0; i < ghosts.length && lives > 0 ; i++){
-            ghosts[i].position.x += stepXGhosts[i];
-            ghosts[i].position.y += stepYGhosts[i];
+   // Generar esferas en columnas a lo largo del eje Y
+   var numEsferas = 12; // Número total de esferas
+   var separacion = 3.1; // Separación entre las esferas
+   var columnaX = -20; // Posición X donde quieres que estén las esferas
+   var columnaXRight = 20; // Posición X de la columna derecha
+   var posYCentral = 0; // Posición Y de la esfera central
+   var altoTotal = (numEsferas - 1) * separacion; // Alto total de las esferas menos la central
+
+   // Calcular la posición Y de la esfera más abajo
+   var posYAbajo = posYCentral - altoTotal / 2;
+
+   // Recorrer cada esfera y calcular su posición
+   for (var i = 0; i < numEsferas; i++) {
+      // Calcular la posición Y de la esfera actual
+      var posY = posYAbajo + i * separacion;
+      // Generar la esfera en la posición calculada para la columna izquierda
+      var esfera = getSphere("score", columnaX, posY, 1);
+      // Generar la esfera en la posición calculada para la columna derecha
+      var esferaDerecha = getSphere("score" , columnaXRight, posY, 1);
+      // Ajustar el tamaño de las esferas
+      esfera.scale.set(0.5, 0.5, 0.5);
+      esferaDerecha.scale.set(0.5, 0.5, 0.5);
+      // Añadir las esferas a la escena
+      scene.add(esfera);
+      scene.add(esferaDerecha);
+      // Agregar la esfera al array
+      scoreSpheres.push(esfera);
+      scoreSpheres.push(esferaDerecha);
+   }
+
+   // Generar esferas en columnas a lo largo del eje Y
+   numEsferas = 10; // Número total de esferas
+   separacion = 3.1; // Separación entre las esferas
+   columnaX = -11.8; // Posición X donde quieres que estén las esferas
+   columnaXRight = 11.8; // Posición X de la columna derecha
+   posYCentral = 0; // Posición Y de la esfera central
+   altoTotal = (numEsferas - 1) * separacion; // Alto total de las esferas menos la central
+
+   // Calcular la posición Y de la esfera más abajo
+   posYAbajo = posYCentral - altoTotal / 2;
+
+   // Recorrer cada esfera y calcular su posición
+   for (var i = 0; i < numEsferas; i++) {
+      // Calcular la posición Y de la esfera actual
+      var posY = posYAbajo + i * separacion;
+      // Generar la esfera en la posición calculada para la columna izquierda
+      var esfera = getSphere("score" , columnaX, posY, 1);
+      // Generar la esfera en la posición calculada para la columna derecha
+      var esferaDerecha = getSphere("score" , columnaXRight, posY, 1);
+      // Ajustar el tamaño de las esferas
+      esfera.scale.set(0.5, 0.5, 0.5);
+      esferaDerecha.scale.set(0.5, 0.5, 0.5);
+      // Añadir las esferas a la escena
+      scene.add(esfera);
+      scene.add(esferaDerecha);
+      // Agregar la esfera al array
+      scoreSpheres.push(esfera);
+      scoreSpheres.push(esferaDerecha);
+   }
+      
+   var borders = [ leftBorder, rightBorder, topBorder, downBorder, pequenoIzqTop, pequenoIzqLeft, pequenoDerTop, pequenoDerLeft, interiorTopDer1, interiorTopIzq1, interiorDownDer1, interiorLeftDer1, interiorDownIzq1, interiorLeftIzq1,
+   interiorTopDer2, interiorLeftIzq2, interiorLeftDer2, interiorDownDown2, interiorDownIzq2, interiorDownDer2, interiorCenterDown2, interiorCenterIzq2, interiorCenterDer2, interiorTopDer1Right, interiorDownDer1Right, interiorTopIzq1Left, interiorDownIzq1Left, interiorCenterIzq2Top,interiorCenterDer2Top];
+
+   animate(sphere, ghosts, powers, borders, renderer, scene, camera, endedGame, extras, extraLive, extraPoint);
+   document.getElementById("life-count").innerHTML = "Lives: " + lives;
+   document.getElementById("score-count").innerHTML = "Score: " + score;
+}
+
+function animate(sphere, ghosts, powers, borders, renderer, scene, camera, endedGame, extras, extraLive, extraPoint) {
+   updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts);
+   checkCollision(sphere, borders, ghosts, powers, scene, extras, extraLive, extraPoint);
+   checkCollisionGhosts(ghosts, borders);
+   
+   // iniciarTemporizadorExtras(extras);
+   if(powers.length != 0 || powerActive == true ){
+      for (var i = 0; i < ghosts.length && lives > 0 ; i++){
+         ghosts[i].position.x += stepXGhosts[i];
+         ghosts[i].position.y += stepYGhosts[i];
+         ghosts[i].rotation.y -= stepXGhosts[i];
+         ghosts[i].rotation.x -= stepYGhosts[i];
+      }
+      for (var i = 0; i < extras.length && lives > 0 ; i++){
+         extras[i].rotation.z += 0.1;
+      }
+   }
+
+   renderer.render(scene, camera);
+
+   if (lives <= 0) {
+      endedGame = true;
+      document.getElementById("end-game-message").innerText =  "Game Over";
+      document.getElementById("score-message").innerText =  "Your Score: " + score;
+   }
+
+   if(powers.length == 0 && powerActive == false){
+      endedGame = true;
+      document.getElementById("end-game-message").innerText =  "Game Over";
+      document.getElementById("score-message").innerText =  "Your Score: " + score;
+   }
+   if(ghosts.length == 0){
+      endedGame = true;
+      document.getElementById("end-game-message").innerText =  "Winner";
+      document.getElementById("score-message").innerText =  "Your Score: " + score;
+   }
+
+   if(endedGame == true){
+      document.getElementById("end-game-message").style.display = "block";
+      document.getElementById("score-message").style.display = "block";
+      document.getElementById("restart-button").style.display = "block";
+   }else{
+      document.getElementById("end-game-message").style.display = "none";
+      document.getElementById("score-message").style.display = "none";
+      document.getElementById("restart-button").style.display = "none";
+   }
+   renderer.setAnimationLoop( function() {
+      animate(sphere, ghosts, powers, borders, renderer, scene, camera, endedGame, extras, extraLive, extraPoint);
+   });
+}
+
+function getLight() {
+   var light = new THREE.DirectionalLight();
+   light.position.set(30, 30, 50);
+   light.target.position.set(-30, -30, 0); // Posición a la que apunta la luz
+   light.castShadow = true;
+   light.shadow.camera.left = -60;
+   light.shadow.camera.right = 60;
+   light.shadow.camera.top = 60;
+   light.shadow.camera.bottom = -60;
+   light.shadow.mapSize.width = 4096;
+   light.shadow.mapSize.height = 4096;
+   return light;
+}
+
+function getSphere(n, px, py, pz) {
+   var geometry = new THREE.SphereGeometry(1, 20, 20);
+   var material; 
+   if(n == "sphere"){
+      material = new getSphereMaterial();  
+   }else if(n == "ghostR"){
+      material = new getGhostMaterialR(); 
+   }else if(n == "ghostG"){
+      material = new getGhostMaterialR();  
+   }else if(n == "ghostB"){
+      material = new getGhostMaterialR();  
+   }else if(n == "powerUp"){
+      material = new getPowerMaterial();
+      geometry = new THREE.SphereGeometry(1.2, 20, 20);
+   }else if(n == "score"){
+      material = new getPowerMaterial();
+   }else if(n == "extraPoint"){
+      material = new THREE.MeshPhysicalMaterial({
+         map : new THREE.TextureLoader().load("extraPoint.jpeg")
+      });
+      geometry = new THREE.SphereGeometry(1.2, 20, 20);
+   }else if(n == "extraLive"){
+      material = new THREE.MeshPhysicalMaterial({
+         map : new THREE.TextureLoader().load("extraLive.jpeg")
+      });
+      geometry = new THREE.SphereGeometry(1.2, 20, 20);
+   }
+
+   var mesh = new THREE.Mesh(geometry, material);
+   mesh.position.x = px; // Mueve la esfera 2 unidades hacia la derecha
+   mesh.position.y = py; // Mueve la esfera 1 unidad hacia arriba
+   mesh.position.z = pz;
+   mesh.castShadow = true;
+   mesh.name = n;
+
+   return mesh;
+}
+
+function getFloor() {
+   var geometry = new THREE.PlaneGeometry(50, 50);
+   var mesh = new THREE.Mesh(geometry, getFloorMaterial());
+   mesh.receiveShadow = true;
+
+   return mesh;
+}
+
+function getBorder(name, x, y, z, posX, posY, posZ) {
+   var geometry = new THREE.BoxGeometry(x, y, z);
+   var mesh = new THREE.Mesh(geometry, getBorderMaterial());
+   mesh.receiveShadow = true;
+   mesh.position.set(posX, posY, posZ);
+   mesh.name = name;
+
+   return mesh;
+}
+
+function getPowerMaterial() {
+   var texture = new THREE.TextureLoader().load("power.jpg");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function getGhostMaterialR() {
+   var texture = new THREE.TextureLoader().load("fantasmaRojo.jpg");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function getGhostMaterialG() {
+   var texture = new THREE.TextureLoader().load("fantasmaVerde.jpg");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+   
+function getSphereMaterial() {
+   var texture = new THREE.TextureLoader().load("pacman.png");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function getWoodMaterial() {
+   var texture = new THREE.TextureLoader().load("wood.png");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.map.repeat.set(4, 4);
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function getFloorMaterial() {
+   var texture = new THREE.TextureLoader().load("suelo.jpg");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   //material.map.repeat.set(4, 2);
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function getBorderMaterial() {
+   var texture = new THREE.TextureLoader().load("pared.jpg");
+   var material = new THREE.MeshPhysicalMaterial({
+      map : texture
+   });
+   material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
+   material.map.repeat.set(3, 3);
+   material.side = THREE.DoubleSide;
+
+   return material;
+}
+
+function checkCollision(sphere, borders, ghosts, powers, scene, extras, extraPoint, extraLive) {
+   var powerRegenerationTime = 50000;
+   var originPosition = sphere.position.clone();
+
+   const positionAttribute = sphere.geometry.getAttribute( 'position' );
+   const localVertex = new THREE.Vector3();
+   const globalVertex = new THREE.Vector3();
+   
+   for ( let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex ++ ) {
+      localVertex.fromBufferAttribute( positionAttribute, vertexIndex );
+      globalVertex.copy( localVertex ).applyMatrix4( sphere.matrixWorld );
+      var directionVector = globalVertex.sub(sphere.position);
+      var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
+      var collisionResults = ray.intersectObjects(borders);
+      if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {
+         // Collision detected
+         if (collisionResults[0].object.name == "left" || collisionResults[0].object.name == "right") {
+            direction.x = 0;   
+         }
+         if (collisionResults[0].object.name == "down" || collisionResults[0].object.name == "top") {
+            
+            direction.y = 0;
+         } 
+         break;
+      }
+   }
+
+   for ( let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex ++ ) {
+      localVertex.fromBufferAttribute( positionAttribute, vertexIndex );
+      globalVertex.copy( localVertex ).applyMatrix4( sphere.matrixWorld );
+      var directionVector = globalVertex.sub(sphere.position);
+      var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
+      var collisionResults = ray.intersectObjects(ghosts);    
+      if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {     
+         if(powerActive == false){
+            if (collisionResults[0].object.name == "ghostR" || collisionResults[0].object.name == "ghostG" || collisionResults[0].object.name == "ghostB") {
+               lives --;// Reduce lives en 1
+               sphere.position.copy(initialSpherePosition);
+               document.getElementById("life-count").innerHTML = "Lives: " + lives;
+            }
+                     
+            break;
+         }else{
+            scene.remove(collisionResults[0].object);
+            for (var i = 0; i < ghosts.length; i++){ 
+               if (ghosts[i] === collisionResults[0].object){
+                  ghosts.splice(i, 1);
+                  console.log(ghosts);
+                  break;
+               }
+            }
          }
       }
-
-      renderer.render(scene, camera);
-
-      if (lives <= 0) {
-         // document.getElementById("life-count").innerHTML = "Game Over";
-         document.getElementById("end-game-overlay").style.display = "block";
-         document.getElementById("end-game-message").innerText =  "Game Over";
-         document.getElementById("score-message").innerText =  "Your Score: " + score;
-      }
-
-      if(powers.length == 0 && powerActive == false){
-         // document.getElementById("life-count").innerHTML = "Game Over"; 
-         document.getElementById("end-game-overlay").style.display = "block";
-         document.getElementById("end-game-message").innerText =  "Game Over";
-         document.getElementById("score-message").innerText =  "Your Score: " + score;
-      }
-      if(ghosts.length == 0){
-         // document.getElementById("life-count").innerHTML = "Winner"; 
-         document.getElementById("end-game-overlay").style.display = "block";
-         document.getElementById("end-game-message").innerText =  "Winner";
-         document.getElementById("score-message").innerText =  "Your Score: " + score;
-
-      }
-
-      renderer.setAnimationLoop( function() {
-         animate(sphere, ghosts, powers, borders, renderer, scene, camera);
-      });
    }
 
-   function getLight() {
-      var light = new THREE.DirectionalLight();
-      light.position.set(4, 2, 4);
-      light.target.position.set(0, 0, 0); // Posición a la que apunta la luz
-      light.castShadow = true;
-      light.shadow.camera.near = 0;
-      light.shadow.camera.far = 40;
-      light.shadow.camera.left = -40;
-      light.shadow.camera.right = 40;
-      light.shadow.camera.top = 40;
-      light.shadow.camera.bottom = -40;
-      light.shadow.mapSize.width = 4096;
-      light.shadow.mapSize.height = 4096;
-      return light;
-   }
-
-   function getSphere(n, px, py, pz) {
-      var geometry = new THREE.SphereGeometry(1, 20, 20);
-      var material; 
-      if(n == "sphere"){
-         material = new getSphereMaterial();  
-      }else if(n == "ghostR"){
-         material = new getGhostMaterialR(); 
-      }else if(n == "ghostG"){
-         material = new getGhostMaterialR();  
-      }else if(n == "ghostB"){
-         material = new getGhostMaterialR();  
-      }else if(n = "powerUp"){
-         geometry = new THREE.SphereGeometry(1.2, 20, 20);
-         material = new getPowerMaterial();
-      }else if(n = "score"){
-         material = new getPowerMaterial();
-      }
-
-      var mesh = new THREE.Mesh(geometry, material);
-      mesh.position.x = px; // Mueve la esfera 2 unidades hacia la derecha
-      mesh.position.y = py; // Mueve la esfera 1 unidad hacia arriba
-      mesh.position.z = pz;
-      mesh.castShadow = true;
-      mesh.name = n;
-
-      return mesh;
-   }
-
-   function getFloor() {
-      var geometry = new THREE.PlaneGeometry(50, 50);
-      var mesh = new THREE.Mesh(geometry, getFloorMaterial());
-      mesh.receiveShadow = true;
-
-      return mesh;
-   }
-
-   function getBorder(name, x, y, z, posX, posY, posZ) {
-      var geometry = new THREE.BoxGeometry(x, y, z);
-      var mesh = new THREE.Mesh(geometry, getBorderMaterial());
-      mesh.receiveShadow = true;
-      mesh.position.set(posX, posY, posZ);
-      mesh.name = name;
-
-      return mesh;
-   }
-
-    function getPowerMaterial() {
-      var texture = new THREE.TextureLoader().load("power.jpg");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-
-   function getGhostMaterialR() {
-      var texture = new THREE.TextureLoader().load("fantasmaRojo.jpg");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-   
-   function getGhostMaterialG() {
-      var texture = new THREE.TextureLoader().load("fantasmaVerde.jpg");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-   
-   function getSphereMaterial() {
-      var texture = new THREE.TextureLoader().load("pacman.png");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-
-   function getWoodMaterial() {
-      var texture = new THREE.TextureLoader().load("wood.png");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.map.repeat.set(4, 4);
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-
-   function getFloorMaterial() {
-      var texture = new THREE.TextureLoader().load("suelo.jpg");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      //material.map.repeat.set(4, 2);
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-
-   function getBorderMaterial() {
-      var texture = new THREE.TextureLoader().load("pared.jpg");
-      var material = new THREE.MeshPhysicalMaterial({
-         map : texture
-      });
-      material.map.wrapS = material.map.wrapT = THREE.RepeatWrapping;
-      material.map.repeat.set(3, 3);
-      material.side = THREE.DoubleSide;
-
-      return material;
-   }
-
-   function checkCollision(sphere, borders, ghosts, powers, scene) {
-      
+   for (var i = 0; i < powers.length; i++) {
+      var powerUp = powers[i];
       var originPosition = sphere.position.clone();
+      var distance = originPosition.distanceTo(powerUp.position);
 
-      const positionAttribute = sphere.geometry.getAttribute( 'position' );
-      const localVertex = new THREE.Vector3();
-      const globalVertex = new THREE.Vector3();
+      // Si la distancia entre la esfera y el powerUp es menor que un cierto umbral,
+      // consideramos que hay una colisión
+      if (distance < 2) {
+         powerActive = true;
+         console.log("PowerUp activado");
+         // Eliminar el powerUp de la escena
+         scene.remove(powerUp);
+         var removedPower = powers.splice(i, 1)[0];
+
+         iniciarTemporizador(ghosts);
+
+         setTimeout(function() {
+            powers.push(removedPower); // Agregar el powerUp de nuevo al arreglo powers
+            scene.add(removedPower); // Agregar el powerUp de nuevo a la escena
+            console.log("PowerUp regenerado");
+         }, powerRegenerationTime)
+
+      break; // Salir del bucle una vez que se ha eliminado el powerUp
+      }
+   } 
+
+   // Colisión con esferas de puntuación
+   for (let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex++) {
+      localVertex.fromBufferAttribute(positionAttribute, vertexIndex);
+      globalVertex.copy(localVertex).applyMatrix4(sphere.matrixWorld);
+      var directionVector = globalVertex.sub(sphere.position);
+      var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
+      var collisionResults = ray.intersectObjects(scoreSpheres);
       
+      if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {
+         // Colisión con una esfera de puntuación detectada
+         // Eliminar la esfera de puntuación del array y de la escena
+         scene.remove(collisionResults[0].object);
+         score ++;
+         document.getElementById("score-count").innerHTML = "Score: " + score;
+         
+         for (var i = 0; i < scoreSpheres.length; i++) { 
+            if (scoreSpheres[i] === collisionResults[0].object){
+               scoreSpheres.splice(i, 1);
+               break;
+            }
+         } 
+      }
+   }
+
+   for (var i = 0; i < extras.length; i++) {
+      var extra = extras[i];
+      var originPosition = sphere.position.clone();
+      var distance = originPosition.distanceTo(extra.position);
+
+      // Si la distancia entre la esfera y el powerUp es menor que un cierto umbral,
+      // consideramos que hay una colisión
+      if (distance < 2) {
+         if(extra.name === "extraLive"){
+            console.log("extraLive");
+            lives += 1;
+            document.getElementById("life-count").innerHTML = "lives: " + lives;
+         }else if(extra.name === "extraPoint"){
+            console.log("extraPoint");
+            score += 10;
+            document.getElementById("score-count").innerHTML = "Score: " + score;
+         }
+
+         // Eliminar el powerUp de la escena
+         scene.remove(extra);
+         var removedExtra = extras.splice(i, 1)[0];
+
+
+         setTimeout(function() {
+            powers.push(removedExtra); // Agregar el powerUp de nuevo al arreglo powers
+            scene.add(removedExtra); // Agregar el powerUp de nuevo a la escena
+            console.log("PowerUp regenerado");
+         }, 60000)
+      break; // Salir del bucle una vez que se ha eliminado el powerUp
+      }
+   } 
+}
+
+function checkCollisionGhosts(ghosts, borders) {
+   for (var i = 0; i < ghosts.length; i++){  
+   var originPosition = ghosts[i].position.clone();
+
+   const positionAttribute = ghosts[i].geometry.getAttribute( 'position' );
+   const localVertex = new THREE.Vector3();
+   const globalVertex = new THREE.Vector3();
+   
       for ( let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex ++ ) {
          localVertex.fromBufferAttribute( positionAttribute, vertexIndex );
-         globalVertex.copy( localVertex ).applyMatrix4( sphere.matrixWorld );
-         var directionVector = globalVertex.sub(sphere.position);
+         globalVertex.copy( localVertex ).applyMatrix4( ghosts[i].matrixWorld );
+         var directionVector = globalVertex.sub(ghosts[i].position);
          var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
          var collisionResults = ray.intersectObjects(borders);
          if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {
             // Collision detected
             if (collisionResults[0].object.name == "left" || collisionResults[0].object.name == "right") {
-               direction.x = 0;
-               
+               stepXGhosts[i] *= -1;
             }
             if (collisionResults[0].object.name == "down" || collisionResults[0].object.name == "top") {
-               
-               direction.y = 0;
-            } 
+               stepYGhosts[i] *= -1;
+            }            
             break;
-
-         }
-      }
-      for ( let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex ++ ) {
-         localVertex.fromBufferAttribute( positionAttribute, vertexIndex );
-         globalVertex.copy( localVertex ).applyMatrix4( sphere.matrixWorld );
-         var directionVector = globalVertex.sub(sphere.position);
-         var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
-         var collisionResults = ray.intersectObjects(ghosts);    
-         if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {     
-            if(powerActive == false){
-               if (collisionResults[0].object.name == "ghostR" || collisionResults[0].object.name == "ghostG" || collisionResults[0].object.name == "ghostB") {
-                  // Reduce lives by 1
-                  //  console.log("colision")
-                  lives --;
-                  // console.log(lives);
-                  sphere.position.copy(initialSpherePosition);
-                  document.getElementById("life-count").innerHTML = "Lives: " + lives;
-               }
-                       
-               break;
-            }else
-            // if(powerActive == true)
-            {
-               scene.remove(collisionResults[0].object);
-               for (var i = 0; i < ghosts.length; i++){ 
-                  if (ghosts[i] === collisionResults[0].object){
-                     ghosts.splice(i, 1);
-                     console.log(ghosts);
-                     break;
-                  }
-               }
-            }
-         }
-      }
-
-      for (var i = 0; i < powers.length; i++) {
-        var powerUp = powers[i];
-        var originPosition = sphere.position.clone();
-        var distance = originPosition.distanceTo(powerUp.position);
-
-        // Si la distancia entre la esfera y el powerUp es menor que un cierto umbral,
-        // consideramos que hay una colisión
-        if (distance < 2) {
-         powerActive = true;
-         console.log("PowerUp activado");
-            // Eliminar el powerUp de la escena
-            scene.remove(powerUp);
-            powers.splice(i, 1);
-            iniciarTemporizador(ghosts) // Eliminar el powerUp del arreglo powers
-            break; // Salir del bucle una vez que se ha eliminado el powerUp
-         }
-      } 
-
-      // Colisión con esferas de puntuación
-      for (let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex++) {
-         localVertex.fromBufferAttribute(positionAttribute, vertexIndex);
-         globalVertex.copy(localVertex).applyMatrix4(sphere.matrixWorld);
-         var directionVector = globalVertex.sub(sphere.position);
-         var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
-         var collisionResults = ray.intersectObjects(scoreSpheres);
-         
-         if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {
-               // Colisión con una esfera de puntuación detectada
-               // Eliminar la esfera de puntuación del array y de la escena
-               scene.remove(collisionResults[0].object);
-               score ++;
-               document.getElementById("score-count").innerHTML = "Score: " + score;
-               
-               for (var i = 0; i < scoreSpheres.length; i++) { 
-                  if (scoreSpheres[i] === collisionResults[0].object){
-                     scoreSpheres.splice(i, 1);
-                     break;
-                  }
-               } 
-            }
-         }
-   }
-
-   function checkCollisionGhosts(ghosts, borders) {
-      for (var i = 0; i < ghosts.length; i++){  
-      var originPosition = ghosts[i].position.clone();
-
-      const positionAttribute = ghosts[i].geometry.getAttribute( 'position' );
-      const localVertex = new THREE.Vector3();
-      const globalVertex = new THREE.Vector3();
-      
-         for ( let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex ++ ) {
-            localVertex.fromBufferAttribute( positionAttribute, vertexIndex );
-            globalVertex.copy( localVertex ).applyMatrix4( ghosts[i].matrixWorld );
-            var directionVector = globalVertex.sub(ghosts[i].position);
-            var ray = new THREE.Raycaster(originPosition, directionVector.clone().normalize());
-            var collisionResults = ray.intersectObjects(borders);
-            if (collisionResults.length > 0 && collisionResults[0].distance < 0.5) {
-               // Collision detected
-               if (collisionResults[0].object.name == "left" || collisionResults[0].object.name == "right") {
-                  stepXGhosts[i] *= -1;
-               }
-               if (collisionResults[0].object.name == "down" || collisionResults[0].object.name == "top") {
-                  stepYGhosts[i] *= -1;
-               }            
-               break;
-            }
-         }
-         // if(powerActive == true){
-         //    ghosts.material = getGhostMaterialG();
-         // }
-      }
-   }
-   
-function updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts) {
-
-   if(powerActive == true || powers.length != 0){
-      if(lives >= 1){
-         if(ghosts.length!= 0){
-         sphere.position.x += stepX * direction.x;
-         sphere.position.y += stepY * direction.y;
          }
       }
    }
 }
 
+function updateSpherePosition(sphere, stepX, stepY, direction, powers, ghosts) {
+   if(powerActive == true || powers.length != 0){
+      if(lives >= 1){
+         if(ghosts.length!= 0){
+         sphere.position.x += stepX * direction.x;
+         sphere.position.y += stepY * direction.y;
+         sphere.rotation.y -= stepX * direction.x;
+         sphere.rotation.x -= stepY * direction.y;
+         }
+      }
+   }
+}
 
 function iniciarTemporizador(ghosts) {
    powerActive = true;
+
+   // Cancelar el temporizador actual si existe
+   if (currentTimeout !== null) {
+      clearTimeout(currentTimeout);
+      console.log("Temporizador reiniciado");
+   }
 
    // Iniciar el temporizador
    const tiempoEspera = 10000; // 10 segundos en milisegundos
@@ -648,23 +702,21 @@ function iniciarTemporizador(ghosts) {
    for (var i = 0; i < ghosts.length; i++){
       powerActive = true;
       ghosts[i].material = getGhostMaterialG();
-      
    }
-   setTimeout(function() {
 
-   console.log("Han pasado 10 segundos");
-   for (var i = 0; i < ghosts.length; i++){
-      powerActive = false;
-      ghosts[i].material = getGhostMaterialR();
-   }
+   currentTimeout = setTimeout(function() {
+      console.log("Han pasado 10 segundos");
+      for (var i = 0; i < ghosts.length; i++){
+         powerActive = false;
+         ghosts[i].material = getGhostMaterialR();
+      }
    // Puedes devolver true aquí o hacer lo que necesites después de 10 segundos
    // como cambiar el estado de una variable
+   currentTimeout = null;
    }, tiempoEspera);
 }
 
 function reset() {
-   document.getElementById("end-game-overlay").style.display = "none";
-   // Eliminar todos los elementos hijos del cuerpo del documento HTML que son elementos del canvas
    var canvas = document.querySelector("canvas");
    if (canvas) {
       canvas.parentNode.removeChild(canvas);
@@ -702,6 +754,12 @@ function reset() {
     init();
 }
 
+function setupListeners() {
+   document.getElementById("restart-button").addEventListener("click", function() {
+      reset();
+   });
+}
+
 function cambiarVelocidadFantasmas(ghosts, stepXGhosts, stepYGhosts) {
    var selector = document.getElementById("ghost-speed-selector");
    var velocidad = parseFloat(selector.value);
@@ -715,19 +773,21 @@ function cambiarVelocidadFantasmas(ghosts, stepXGhosts, stepYGhosts) {
 
 </script>
 
-<body onload="init()">
+<body onload="init(); setupListeners()">
 <div id="life-count">Lives: </div>
 <div id="score-count">Score: </div>
-<div id="end-game-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); z-index: 9999; text-align: center;">
-   <div id="end-game-message" style="color: white; font-size: 48px; margin-top: 100px;"></div>
-   <div id="score-message"  style ="color: white; font-size: 48px; margin-top: 100px;"></div>
-   <button id="restart-button" style="margin-top: 20px; font-size: 24px;">Restart Game</button>
-</div>
+   <div style="align-content: center;">
+      <div id="end-game-message"></div>
+      <div id="score-message" ></div>
+      <button id="restart-button">Restart Game</button>
+   </div>
+   
 <select id="ghost-speed-selector" onchange="cambiarVelocidadFantasmas(ghosts, stepXGhosts, stepYGhosts)">
    <option value="0.5">Lento</option>
    <option value="1">Normal</option>
    <option value="2">Rapido</option>
 </select>
+
 </body>
 
 </html>
