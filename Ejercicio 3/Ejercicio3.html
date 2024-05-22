@@ -31,31 +31,31 @@
     <script>
         class WebGLApp {
             constructor() {
-                this.puntos = [];
-                this.triangulos = [];
-                this.colores = [
-                    [1, 0, 0, 1],
-                    [0, 1, 0, 1],
-                    [0, 0, 1, 1]
+                this.puntos = []; // Array para almacenar los puntos clicados
+                this.triangulos = []; // Array para almacenar triangulos (no usado)
+                this.colores = [ // Array para los colores
+                    [1, 0, 0, 1], // Rojo
+                    [0, 1, 0, 1], // Verde
+                    [0, 0, 1, 1] // Azul
                 ];
-                this.canvas = document.getElementById("myCanvas");
-                this.gl = this.canvas.getContext("webgl");
+                this.canvas = document.getElementById("myCanvas"); // Referencia al elemento canvas
+                this.gl = this.canvas.getContext("webgl"); // Contexto WebGL obtenido del canvas
 
-                if (!this.gl) {
+                if (!this.gl) { // Verifica si el contexto del canvas fue obtenido correctamente
                     console.log("Failed to get the rendering context for WebGL");
                     return;
                 }
 
-                this.initShaders();
-                this.setupEventListeners();
-                this.clearCanvas();
+                this.initShaders(); // Iniciar shader
+                this.setupEventListeners(); // Eventos
+                this.clearCanvas(); // limpiar el canvas
             }
 
-            initShaders() {
+            initShaders() { // Obtiene el contenido de los scripts de shaders
                 var vs = document.getElementById('shaderVs').innerHTML;
                 var fs = document.getElementById('shaderFs').innerHTML;
 
-                if (!this.initShadersProgram(vs, fs)) {
+                if (!this.initShadersProgram(vs, fs)) { // pasa el contenido a isitShadersProgram()
                     console.log('Failed to initialize shaders.');
                     return;
                 }
@@ -93,12 +93,12 @@
             }
 
             clearCanvas() {
-                this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-                this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                this.gl.clearColor(0.0, 0.0, 0.0, 1.0); // Establece color fondo negro
+                this.gl.clear(this.gl.COLOR_BUFFER_BIT); // Limpia el canvas
             }
 
             setupEventListeners() {
-                this.canvas.onmousedown = (ev) => this.handleClick(ev);
+                this.canvas.onmousedown = (ev) => this.handleClick(ev); // manejar los clicks del ratón
             }
 
             handleClick(ev) {
@@ -111,18 +111,18 @@
                 var y = (halfCanvasHeight - clickY) / halfCanvasHeight;
                 var punto = [x, y];
 
-                this.puntos.push(punto);
+                this.puntos.push(punto); // almacena el punto en el array puntos
                 console.log(this.puntos);
 
                 this.clearCanvas();
 
-                if (this.puntos.length < 3) {
+                if (this.puntos.length < 3) { // Dibuja los puntos si hay menos de tres
                     for (var i = 0; i < this.puntos.length; i++) {
                         this.drawPoint(this.puntos[i]);
                     }
                 }
 
-                if (this.puntos.length >= 3) {
+                if (this.puntos.length >= 3) { // Si hay tres puntos o mas, dibuja triangulo utilizando los 3 ultimos puntos y colorea ciclicamente
                     for (var i = 0; i < this.puntos.length - 2; i++) {
                         var triangulo = [this.puntos[i][0], this.puntos[i][1], this.puntos[i + 1][0], this.puntos[i + 1][1], this.puntos[i + 2][0], this.puntos[i + 2][1]];
                         this.drawTriangle(triangulo, this.colores[i % this.colores.length]);
@@ -131,33 +131,33 @@
             }
 
             drawPoint(punto) {
-                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position");
-                this.gl.vertexAttrib2fv(a_Position, punto);
-                this.gl.drawArrays(this.gl.POINTS, 0, 1);
+                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position");// Obtinene la ubicacion del atributi a_Position en el shader
+                this.gl.vertexAttrib2fv(a_Position, punto); // Asigna las coordenadas del punto al atributo
+                this.gl.drawArrays(this.gl.POINTS, 0, 1); // Dibuja un punto
             }
 
             drawTriangle(vertices, color) {
-                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position");
-                var verticesArray = new Float32Array(vertices);
-                var verticesBuffer = this.gl.createBuffer();
+                var a_Position = this.gl.getAttribLocation(this.glProgram, "a_Position"); // Obtiene la ubicación del atributo a_Position en el shader
+                var verticesArray = new Float32Array(vertices); // Crea un buffer de verticces
+                var verticesBuffer = this.gl.createBuffer(); // Transfiere las coordenadas del triangulo al buffer
 
                 if (!verticesBuffer) {
                     console.log('Error creating buffer object');
                     return -1;
                 }
-
+                // Configura el puntero de atributo para leer los datos del buffer
                 this.gl.bindBuffer(this.gl.ARRAY_BUFFER, verticesBuffer);
                 this.gl.bufferData(this.gl.ARRAY_BUFFER, verticesArray, this.gl.STATIC_DRAW);
                 this.gl.vertexAttribPointer(a_Position, 2, this.gl.FLOAT, false, 0, 0);
                 this.gl.enableVertexAttribArray(a_Position);
 
-                var u_Color = this.gl.getUniformLocation(this.glProgram, 'u_Color');
-                this.gl.uniform4fv(u_Color, color);
-                this.gl.drawArrays(this.gl.TRIANGLES, 0, 3);
+                var u_Color = this.gl.getUniformLocation(this.glProgram, 'u_Color'); // Obtiene la ubicacion del uniform u_Color
+                this.gl.uniform4fv(u_Color, color); // Asigna el color
+                this.gl.drawArrays(this.gl.TRIANGLES, 0, 3); // Dibuja el triangulo
             }
         }
 
-        function init() {
+        function init() { // Crea una nueva instancia de WebGLApp
             new WebGLApp();
         }
     </script>

@@ -129,7 +129,7 @@
                 if(event.key == 'ArrowUp'){
                 y += step;
                 console.log(step);
-                }else if(projectionValue == "perspective" && event.key == 'ArrowDown'){
+                }else if(event.key == 'ArrowDown'){
                 y -= step;
                 console.log(step); 
                 }
@@ -231,7 +231,7 @@
         // Indexes (for drawing squares using triangles)
         var indexes = [
             0, 1, 2,
-            0, 2, 3,
+            2, 3, 0,
 
             4, 5, 6,
             4, 6, 7,
@@ -418,8 +418,10 @@
     }
 
     function initTexturesAndDraw(gl, rad_ang) {
-        var image0 = new Image();
-        image0.src = 'portal.jpg';
+        // canvas = document.getElementById("myCanvas");
+        // gl = canvas.getContext("webgl");
+        var image0 = new Image(); // Crear la textura
+        image0.src = 'portal.jpg'; // Indicar funete de la textura
         var image1 = new Image();
         image1.src = 'light.jpg';
         image0.onload = function () {

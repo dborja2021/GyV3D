@@ -19,20 +19,38 @@
 
 <script id="shaderVs" type="x-shader/x-vertex">
     attribute vec4 a_Position;
+    attribute vec3 a_Color;
     uniform mat4 u_Matrix;
+    varying highp vec4 v_Color;
     void main() {
         gl_Position = u_Matrix * a_Position;
+        v_Color = vec4(a_Color, 1.0);
+
     }
 </script>
 
 <script id="shaderFs" type="x-shader/x-fragment">
+    varying highp vec4 v_Color;
     precision mediump float;
     void main() {
-        gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+        gl_FragColor = v_Color;
     }
 </script>
 
 <script>
+    var color = new Float32Array([ // Color para la figura
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0,
+        1.0, 1.0, 0.0
+    ]); 
 
     var scale = 1.0
     var triangleTranslation = [0.0, 0.0, 0.0];
@@ -43,8 +61,11 @@
     var rect2Translation = [0.0, 0.0, 0.0]
 
     function init() {
+        var colors = new Float32Array([
+            1.0, 1.0, 0.0
+        ])
         // Vertices Triangulo
-        var verticesTriangulo = new Float32Array([
+        var verticesTriangulo = new Float32Array([ // Definir los vertices coo un array de Float32Array
             -0.75, 0.0, 0.0,
             0.0, 0.5, 0.0,
             0.75, 0.0, 0.0,
@@ -67,7 +88,7 @@
         ]);
 
         var canvas = document.getElementById("myCanvas");
-        var gl = canvas.getContext("webgl");
+        var gl = canvas.getContext("webgl"); // Obtiene el contexto WebGL del canvas
         if (!gl) {
             console.log("Failed to get the rendering context for WebGL");
             return;
@@ -82,68 +103,73 @@
 
         initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2);
 
-        document.onkeydown = function (ev) {
+        document.onkeydown = function (ev) { // Manejar las pulsaciones de teclado
             handleKeyPress(ev.key);
-
         };
 
-        canvas.addEventListener('keyPress', handleKeyPress);
-        drawScene(gl);
+        drawScene(gl); // Dibuja la escena
     }
 
     function drawScene(gl) {
-        gl.clearColor(0.0, 0.0, 1.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.clearColor(0.0, 0.0, 1.0, 1.0); // Establece color de fondo
+        gl.clear(gl.COLOR_BUFFER_BIT); // limpia el buffer del color
 
-        // Cambio de escala
+        // Matriz de escalado basado en la variable scale
         var scaled = glMatrix.mat4.fromScaling(glMatrix.mat4.create(), [scale, scale, 0.0]);
 
-        // Transformaciones Triangulo
-        var trianguloRotated = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), triangleRotation);
-        var translatedTriangle = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation);
-        var triangleMatrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translatedTriangle, scaled);
-        triangleMatrix = glMatrix.mat4.multiply(triangleMatrix, trianguloRotated, triangleMatrix);
-        triangleMatrix = glMatrix.mat4.multiply(translatedTriangle, triangleMatrix, triangleMatrix);
+        // Triangulo
+        var trianguloRotated = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), triangleRotation); // Crea una matriz de rotación en el eje Y para el triángulo utilizando la variable `triangleRotation`
+        var translatedTriangle = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), triangleTranslation); // Crea una matriz de traslación para el triángulo utilizando la variable `triangleTranslation`
+        var triangleMatrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), translatedTriangle, scaled); // Combina la matriz de traslación y la matriz de escalado
+        triangleMatrix = glMatrix.mat4.multiply(triangleMatrix, trianguloRotated, triangleMatrix); // Combina la matriz resultante anterior con la matriz de rotación
+        triangleMatrix = glMatrix.mat4.multiply(translatedTriangle, triangleMatrix, triangleMatrix); // Combina la matriz resultante anterior con la matriz de traslación nuevamente
 
-        var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix");
-        gl.uniformMatrix4fv(mvMatrixUniform, false, triangleMatrix);
+        var mvMatrixUniform = gl.getUniformLocation(gl.program, "u_Matrix"); // Obtiene la ubicacion de u_Matrix
+        
+        gl.uniformMatrix4fv(mvMatrixUniform, false, triangleMatrix); // Asigna la transformacion del triangulo
+        gl.drawArrays(gl.TRIANGLES, 0, 3); // Dibujar el triangulo usando los vertices del 0 al 2
 
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        // Rectangulo izquierda
+        var rect1Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect1Translation); // Crea una matriz de traslación para el rectángulo izquierdo utilizando la variable `rect1Translation`
+        var rect1Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect1Rotation); // Crea una matriz de rotación en el eje Z para el rectángulo izquierdo utilizando la variable `rect1Rotation`
+        var rect1Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect1Translated, scaled); // Combina la matriz de traslación y la matriz de escalado para el rectángulo izquierdo
+        rect1Matrix = glMatrix.mat4.multiply(rect1Matrix, rect1Rotated, rect1Matrix); // Combina la matriz resultante anterior con la matriz de rotación
+        rect1Matrix = glMatrix.mat4.multiply(translatedTriangle, rect1Matrix, rect1Matrix); // Combina la matriz resultante anterior con la matriz de traslación nuevamente
 
-        // Transformaciones Rectangulo Izquierda
-        var rect1Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect1Translation);
-        var rect1Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect1Rotation);
-        var rect1Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect1Translated, scaled);
-        rect1Matrix = glMatrix.mat4.multiply(rect1Matrix, rect1Rotated, rect1Matrix);
-        rect1Matrix = glMatrix.mat4.multiply(translatedTriangle, rect1Matrix, rect1Matrix);
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect1Matrix); // Asigna la transformacion del rectangulo izquierda
+        gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4); // Dibujar el triangulo usando los vertices del 3 al 6
 
-        gl.uniformMatrix4fv(mvMatrixUniform, false, rect1Matrix);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 3, 4);
-
-        // Transformaciones Rectangulo Derecha
+        // Rectangulo derecha
         var rect2Translated = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), rect2Translation);
         var rect2Rotated = glMatrix.mat4.fromZRotation(glMatrix.mat4.create(), rect2Rotation);
         var rect2Matrix = glMatrix.mat4.multiply(glMatrix.mat4.create(), rect2Translated, scaled);
         rect2Matrix = glMatrix.mat4.multiply(rect2Matrix, rect2Rotated, rect2Matrix);
         rect2Matrix = glMatrix.mat4.multiply(translatedTriangle, rect2Matrix, rect2Matrix);
 
-        gl.uniformMatrix4fv(mvMatrixUniform, false, rect2Matrix);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4);
+        gl.uniformMatrix4fv(mvMatrixUniform, false, rect2Matrix); // Asigna la transformacion del rectangulo izquierda
+        gl.drawArrays(gl.TRIANGLE_STRIP, 7, 4); // Dibujar el triangulo usando los vertices del 7 al 10
 
+        var colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer); // Vincula el buffer de vertices al contexto WebGL
+        // Combina los vertices de los tres objetos
+        gl.bufferData(gl.ARRAY_BUFFER, color, gl.STATIC_DRAW); // Carga los vertices en el buffer
+        var a_Color = gl.getAttribLocation(gl.program, 'a_Color'); // Obtiene la ubicación del atributo 'a_Position' en el programa de shaders
+        gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, 0, 0); // Utiliza el buffer en a_Position
+        gl.enableVertexAttribArray(a_Color); 
         // Call drawScene again in the next browser repaint
         requestAnimationFrame(function() {
             drawScene(gl)
         });
     }
 
-    function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2) {
-        var vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        var allVertices = new Float32Array([...verticesTriangulo, ...verticesRectangulo1, ...verticesRectangulo2]);
-        gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW);
-        var a_Position = gl.getAttribLocation(gl.program, 'a_Position');
-        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(a_Position);
+    function initVertexBuffers(gl, verticesTriangulo, verticesRectangulo1, verticesRectangulo2, colors) {
+        var vertexBuffer = gl.createBuffer(); // Crear buffer de vertices
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer); // Vincula el buffer de vertices al contexto WebGL
+        var allVertices = new Float32Array([...verticesTriangulo, ...verticesRectangulo1, ...verticesRectangulo2]); // Combina los vertices de los tres objetos
+        gl.bufferData(gl.ARRAY_BUFFER, allVertices, gl.STATIC_DRAW); // Carga los vertices en el buffer
+        var a_Position = gl.getAttribLocation(gl.program, 'a_Position'); // Obtiene la ubicación del atributo 'a_Position' en el programa de shaders
+        gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0); // Utiliza el buffer en a_Position
+        gl.enableVertexAttribArray(a_Position);        
     }
 
     function initShaders(gl, vs_source, fs_source) {

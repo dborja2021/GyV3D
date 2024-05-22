@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WebGL projections: perspective</title>
+    <title>Ejercicio 5</title>
     <meta name="author" content="Daniel Borja Fernández">
     <meta name="email" content="d.borja.2021@alumnos.urjc.es">
 </head>
@@ -10,13 +10,16 @@
     <canvas id="myCanvas" width="640" height="480"></canvas><br>
     <b>Rotation</b>
     <input id="casillaRotacion" type="checkbox" name="rotation" checked>
-    <input type="range" id="speed" min="1" max="3" value="1" step="1"> Speed<br>
+    <input type="range" id="speed" min="1" max="5" value="1" step="1"> Speed<br>
     <b>WebGL primitive</b>
     <input type="radio" name="primitive" value="triangles" checked> Triangles
     <input type="radio" name="primitive" value="lines"> Lines<br>
     <b>Projection type</b>
     <input type="radio" name="projection" value="perspective" checked> Perspective
     <input type="radio" name="projection" value="orthographic"> Orthographic<br>
+    <!-- <b>Decoration</b>
+    <input type="radio" name="christmas" value="no" checked> No
+    <input type="radio" name="christmas" value="yes"> Yes<br> -->
 </body>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/3.4.2/gl-matrix-min.js"></script>
@@ -43,9 +46,9 @@
 
 <script>
     var casillaRotacion = document.getElementById("casillaRotacion");
-    var primitiveValue = document.querySelector('input[name="primitive"]:checked').value;
-    var projectionValue = document.querySelector('input[name="projection"]:checked').value;
-    var speed = document.getElementById("speed").value;
+    var primitiveValue = document.querySelector('input[name="primitive"]:checked').value; // guardar valor de casilla primitive
+    var projectionValue = document.querySelector('input[name="projection"]:checked').value; // guardar valor de casilla projection
+    var speed = document.getElementById("speed").value; // Valor elemento de entrada speed
     var z = 3;
 
     function init() {
@@ -77,7 +80,7 @@
         initProjection(gl, canvas);
 
         // Set clear canvas color
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0); // Establece color negro para  el fondo 
 
         // Hidden surface removal
         gl.enable(gl.DEPTH_TEST);
@@ -106,18 +109,17 @@
         // Rotacion
         if (casillaRotacion.checked){
             // Si la casilla Rotacion activada
-            var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
-            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
+            var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5); // Creacion matriz de rotacion eje y
+            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix"); // Se obtiene la ubicacion del u_mvMatrix
+            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix); // Se asigna a u_mvMatrix el valor de la matriz de rotacion
 
             // Guardar la posicion actual
             var mvMatrixGuardada = mvMatrix;
 
-            if(primitiveValue =="triangles"){
-                // Draw
-                gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+            if(primitiveValue =="triangles"){ // Se dibujan los elementos segun el tipo de primitiva seleccionado
+                gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0); // Triangulos 
             }else{
-                gl.drawElements(gl.LINE_LOOP, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
+                gl.drawElements(gl.LINE_LOOP, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0); // Lineas
             }
 
             // Incremento angulo con la velocidad
@@ -127,10 +129,10 @@
             // Si la casilla Rotacion desactivada
             if(mvMatrixGuardada){
                 var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-                gl.uniformMatrix4fv(uMvMatrix, false, mvMatrixGuardada);
+                gl.uniformMatrix4fv(uMvMatrix, false, mvMatrixGuardada); //Se restaura la matriz guardada
             }
 
-            // Dibujar sin rotacion
+            // Dibujar sin rotacion segun la primitiva seleccionada
                 if(primitiveValue =="triangles"){
                     gl.drawElements(gl.TRIANGLES, 14 * 2 * 3, gl.UNSIGNED_SHORT, 0);
                 }else{
@@ -235,7 +237,8 @@
             0.5, -0.75, 0.25,     0, 1, 1,  // v63 
         ];
 
-        // Indexes (for drawing squares using triangles)
+        // Aquí se definen los índices para dibujar los triángulos que componen los objetos en la escena.
+        // Cada conjunto de tres índices forma un triángulo.
         var indexes = [
             0, 1, 2,
             0, 2, 3,
@@ -289,17 +292,17 @@
 
         ];
 
-        // Write a_Position and a_Color using gl.ARRAY_BUFFER
+        // Se crea y se llena un búfer de datos de tipo ARRAY_BUFFER con las coordenadas de los vértices y los colores.
         gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexesAndColors), gl.STATIC_DRAW);
 
-        var vertexPositionAttribute = gl.getAttribLocation(gl.program, "a_Position");
-        gl.enableVertexAttribArray(vertexPositionAttribute);
-        gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 0);
+        var vertexPositionAttribute = gl.getAttribLocation(gl.program, "a_Position"); // Obtener ubicacion de a_Position
+        gl.enableVertexAttribArray(vertexPositionAttribute); // Abilitar atributo de posición
+        gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 0); // empieza en 0
 
         var vertexColorAttribute = gl.getAttribLocation(gl.program, "a_Color");
         gl.enableVertexAttribArray(vertexColorAttribute);
-        gl.vertexAttribPointer(vertexColorAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 4 * 3);
+        gl.vertexAttribPointer(vertexColorAttribute, 3, gl.FLOAT, false, 4 * (3 + 3), 4 * 3); // empieza en 4*3
 
         // Write indexes in gl.ELEMENT_ARRAY_BUFFER
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
@@ -316,15 +319,15 @@
         // PERSPECTIVE
         if (projectionValue == "perspective"){
             // Write u_pMatrix
-            var pMatrixUniform = gl.getUniformLocation(gl.program, "u_pMatrix");
-            var ratio = canvas.width / canvas.height;
-            var pMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), toRadian(60), ratio, 0.1, 100);
-            gl.uniformMatrix4fv(pMatrixUniform, false, pMatrix);
+            var pMatrixUniform = gl.getUniformLocation(gl.program, "u_pMatrix"); // Obtener ubicación matriz de proyeccion u_pMatrix
+            var ratio = canvas.width / canvas.height; // Calcular relacion de aspecto
+            var pMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), toRadian(60), ratio, 0.1, 100); // Crear matriz de proyeccion
+            gl.uniformMatrix4fv(pMatrixUniform, false, pMatrix); // Asiganar matriz de proyeccion a u_pMatrix
 
-                    // Write u_vMatrix
-            var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix");
-            var vMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), [0, 0, z], [0, 0, 0], [0, 1, 0]);
-            gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);
+            // Write u_vMatrix
+            var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix"); // Obtiene la ubicación de la matriz de vista 
+            var vMatrix = glMatrix.mat4.lookAt(glMatrix.mat4.create(), [0, 0, z], [0, 0, 0], [0, 1, 0]); // Crea una matriz de vista, posición de la cámara, punto al que está mirando, el vector que indica la dirección 
+            gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix); // Asigna la matriz de vista a u_vMatrix
 
         }else{
             // ORTOGRAPIC

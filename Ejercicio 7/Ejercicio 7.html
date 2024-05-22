@@ -10,18 +10,19 @@
     <canvas id="myCanvas" width="640" height="480"></canvas><br>
     <b>Step:</b>
     <input type="text" value="0.01" id="step"><br>
-    <b>Rotation</b>
+    <b>Rotation:</b>
     <input id="casillaRotacion" type="checkbox" name="rotation" checked>
     <input type="range" id="speed" min="1" max="3" value="1" step="1"> Speed<br>
-    <b>WebGL primitive</b>
+    <b>WebGL primitive:</b>
     <input type="radio" name="primitive" value="triangles" checked> Triangles
     <input type="radio" name="primitive" value="lines"> Lines<br>
-    <b>Projection type</b>
+    <b>Projection type:</b>
     <input type="radio" name="projection" value="perspective" checked> Perspective
     <input type="radio" name="projection" value="orthographic"> Orthographic<br>
-    <b>Decoration</b>
+    <b>Decoration:</b>
     <input type="radio" name="christmas" value="no" checked> No
     <input type="radio" name="christmas" value="yes"> Yes<br>
+    <b>Light direction:</b><br>
     <input type="range" id="x" min="-2" max="2" value="1.1" step="0.1">X<br>
     <input type="range" id="y" min="-2" max="2" value="0.8" step="0.1">Y<br>
     <input type="range" id="z" min="-2" max="2" value="1.1" step="0.1">Z<br>
@@ -39,17 +40,18 @@
     uniform mat4 u_pMatrix;
     uniform mat4 u_vMatrix;
     uniform mat4 u_mvMatrix;
+    uniform mat4 u_NormalMatrix;
 
     varying vec2 v_TexCoord;
     varying highp vec4 v_Color;
 
-
-    void main() {
+    void main() {   
         gl_Position = u_pMatrix * u_vMatrix * u_mvMatrix * a_Position;
         v_TexCoord = a_TexCoord;
+        
 
-        vec3 normal = normalize(a_Normal);
-        float nDotL = max(dot(u_LightDirection, normal),0.0);
+        vec4 transformedNormal = u_NormalMatrix * vec4(a_Normal, 1.0);
+        float nDotL = max(dot(u_LightDirection, normalize(transformedNormal.xyz)),0.0);
 
         vec3 v_Diffuse = u_LightColor * nDotL;
         v_Color = vec4(v_Diffuse, 1.0);
@@ -58,8 +60,10 @@
 
 <script id="shaderFs" type="x-shader/x-fragment">
     precision mediump float;
+
     uniform sampler2D u_Sampler0;
     uniform sampler2D u_Sampler1;
+    uniform sampler2D u_SamplerSphere;
     uniform vec4 u_AmbientLight;
     uniform float decoration;
 
@@ -67,24 +71,35 @@
     varying highp vec4 v_Color;
 
     void main(void) {
+
         vec4 colorFinal;
         vec4 color0 = texture2D(u_Sampler0, v_TexCoord);
         vec4 color1 = texture2D(u_Sampler1, v_TexCoord);
+        vec4 color2 = texture2D(u_SamplerSphere, v_TexCoord);
 
         if (decoration == 0.0) {
             colorFinal = color0;
-        }else{
+        }else if(decoration == 1.0){
             colorFinal = color0*color1;
+        }else if(decoration == 2.0){
+            colorFinal = color2;
         }
 
         vec4 amb = colorFinal * u_AmbientLight;
         vec4 dif = colorFinal * v_Color;
+
         gl_FragColor = amb + dif;
     }
 </script>
 
 <script>
+    var rotationX = 0;
+    var rotationY = 1;
+    var rotationZ = 0;
+    var canvas = document.getElementById("myCanvas");
+    var gl = canvas.getContext("webgl");
     var casillaRotacion = document.getElementById("casillaRotacion");
+    var casillaRotacionChecked = document.querySelector('input[name="rotation"]:checked');
     var primitiveValue = document.querySelector('input[name="primitive"]:checked').value;
     var projectionValue = document.querySelector('input[name="projection"]:checked').value;
     var step = parseFloat(document.getElementById("step").value);
@@ -92,18 +107,20 @@
     var z = 3;
     var y = 0;
     var mvMatrixGuardada;
+    const LATITUDE_BANDS = 30;
+    const LONGITUDE_BANDS = 30;
+    const RADIUS = 0.2;
+
+
     
 
     function init() {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
                 
         // Variables
         var rad_ang = 0.0;
         
-        // Get canvas object from the DOM
-        var canvas = document.getElementById("myCanvas");
-
-        // Init WebGL context
-        var gl = canvas.getContext("webgl");
         if (!gl) {
             console.log("Failed to get the rendering context for WebGL");
             return;
@@ -117,8 +134,8 @@
             return;
         }
 
-        // Init vertex shader
-        initVertexBuffers(gl);
+        // Init projection matrix
+        initProjection(gl, canvas);
 
         // Set clear canvas color
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -129,19 +146,13 @@
         // Init textures
         initTexturesAndDraw(gl, rad_ang);
 
-        // Init projection matrix
-        initProjection(gl, canvas);
-
-        // Draw Scene
-        drawScene(gl, rad_ang, canvas);
-
         // Event listener for mouse wheel
         document.addEventListener('wheel', function (event) {
             projectionValue = document.querySelector('input[name="projection"]:checked').value;
             if (projectionValue == "perspective"){
                 z = event.wheelDelta > 0 ? z - 1 : z + 1;
-                console.log(z);
-                console.log(projectionValue);
+                // console.log(z);
+                // console.log(projectionValue);
             }
         });  
 
@@ -152,16 +163,18 @@
             if (projectionValue == "perspective" ){
                 if(event.key == 'ArrowUp'){
                 y += step;
-                console.log(step);
+                // console.log(step);
                 }else if(event.key == 'ArrowDown'){
                 y -= step;
-                console.log(step); 
+                // console.log(step); 
                 }
             }
         }); 
     }
     
     function initVertexBuffers(gl) {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
         // Vertexes and colors  (X, Y, Z, S, T, X, Y, Z)
         var vertexAndTexturesAndNormals = [
             // Columna Izquierda
@@ -327,63 +340,162 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexes), gl.STATIC_DRAW);
     }
     
-    function drawScene(gl, rad_ang, canvas, decorationValue) {
-        var casillaRotacion = document.getElementById("casillaRotacion");
+    function initVertexBuffersSphere(gl) {
+        var vertexesAndTexturesEsfera = [];
+
+        for (var i = 0; i <= LATITUDE_BANDS; i++) {
+            var theta = i * Math.PI / LATITUDE_BANDS;
+            var sinTheta = Math.sin(theta);
+            var cosTheta = Math.cos(theta);
+
+            for (var j = 0; j <= LONGITUDE_BANDS; j++) {
+                var phi = j * 2 * Math.PI / LONGITUDE_BANDS;
+                var sinPhi = Math.sin(phi);
+                var cosPhi = Math.cos(phi);
+
+                var x = sinPhi * sinTheta;
+                var y = cosTheta;
+                var z = cosPhi * sinTheta;
+
+                vertexesAndTexturesEsfera.push(RADIUS * x);
+                vertexesAndTexturesEsfera.push(RADIUS * y);
+                vertexesAndTexturesEsfera.push(RADIUS * z);
+
+
+                var u = (j / LONGITUDE_BANDS);
+                var v = (i / LATITUDE_BANDS);
+
+                vertexesAndTexturesEsfera.push(u);
+                vertexesAndTexturesEsfera.push(v);
+
+
+                vertexesAndTexturesEsfera.push(x);
+                vertexesAndTexturesEsfera.push(y);
+                vertexesAndTexturesEsfera.push(z);
+            }
+        }  
+
+        var indexesEsfera = [];
+
+        for (var i = 0; i < LATITUDE_BANDS; i++) {
+            for (var j = 0; j < LONGITUDE_BANDS; j++) {
+                var first = i * (LONGITUDE_BANDS + 1) + j;
+                var second = first + LONGITUDE_BANDS + 1;
+
+                indexesEsfera.push(first);
+                indexesEsfera.push(second);
+                indexesEsfera.push(first + 1);
+
+                indexesEsfera.push(second);
+                indexesEsfera.push(second + 1);
+                indexesEsfera.push(first + 1);
+            }
+        }
+
+
+        // Para luna
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexesAndTexturesEsfera), gl.STATIC_DRAW);
+
+        var vertexPositionAttribute = gl.getAttribLocation(gl.program, "a_Position");
+        gl.enableVertexAttribArray(vertexPositionAttribute);
+
+        gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false,  4 * (3 + 2  + 3), 0);
+
+
+        var vertexColorAttribute = gl.getAttribLocation(gl.program, "a_TexCoord");
+        // console.log(vertexColorAttribute);
+        gl.enableVertexAttribArray(vertexColorAttribute);
+        gl.vertexAttribPointer(vertexColorAttribute, 2, gl.FLOAT, false, 4 * (3 + 2 + 3), 4 * 3);
+
+		var vertexNormalAttribute = gl.getAttribLocation(gl.program, "a_Normal");
+        // console.log(vertexNormalAttribute);
+		gl.enableVertexAttribArray(vertexNormalAttribute);     
+        gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 4 * (3 + 2 + 3), 4 * 5);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexesEsfera), gl.STATIC_DRAW);
+
+    }
+
+    function drawScene(gl, canvas, rad_ang) {
+        speed = document.getElementById("speed").value;
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
+
+        var Rotacion = casillaRotacionChecked.checked;
         var primitiveValue = document.querySelector('input[name="primitive"]:checked').value;
         
         var decorationValue = document.querySelector('input[name="christmas"]:checked').value;
-        var decorationUniform = gl.getUniformLocation(gl.program, 'decoration');
-        var uniformValue;
-
-        if (decorationValue == "no"){
-            gl.uniform1f(decorationUniform,0.0);
-        }else{
-            gl.uniform1f(decorationUniform,1.0);
-
-        }
+        var decoration = gl.getUniformLocation(gl.program, 'decoration');
+ 
         // Clear
         gl.clear(gl.COLOR_BUFFER_BIT);
-        
-        // Rotacion
-        if (casillaRotacion.checked){
-            // Si la casilla Rotacion activada
-            var mvMatrix = glMatrix.mat4.fromYRotation(glMatrix.mat4.create(), rad_ang, 0.5);
-            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
 
-            // Guardar la posicion actual
-            var mvMatrixGuardada = mvMatrix;
+        initProjection(gl, canvas);
 
-            if(primitiveValue =="triangles"){
+        // ESFERA
+
+        var sphereX = document.getElementById("x").value;
+        var sphereY = document.getElementById("y").value;
+        var sphereZ = document.getElementById("z").value;
+
+        var sphereRotation = glMatrix.mat4.fromRotation(glMatrix.mat4.create(), rad_ang, [0, -1, 0]);
+        var sphereTranslation = glMatrix.mat4.fromTranslation(glMatrix.mat4.create(), [sphereX, sphereY, sphereZ]);
+        var mvMatrixSphere = glMatrix.mat4.multiply(glMatrix.mat4.create(), sphereTranslation, sphereRotation);
+        var uMvMatrixSphere = gl.getUniformLocation(gl.program, "u_mvMatrix");
+
+        gl.uniformMatrix4fv(uMvMatrixSphere, false, mvMatrixSphere);
+        gl.uniform1f(decoration, 2.0); 
+        initVertexBuffersSphere(gl);
+
+        if(primitiveValue =="triangles"){
+                // Draw
+                
+                gl.drawElements(gl.TRIANGLES, LATITUDE_BANDS * LONGITUDE_BANDS * 3 * 2, gl.UNSIGNED_SHORT, 0);
+            }else{
+                gl.drawElements(gl.LINE_STRIP, LATITUDE_BANDS * LONGITUDE_BANDS * 3 * 2, gl.UNSIGNED_SHORT, 0);
+            }
+
+        // PORTAL
+
+        if (decorationValue == "no"){
+            gl.uniform1f(decoration,0.0);
+        }else{
+            gl.uniform1f(decoration,1.0);
+        }
+
+        var mvMatrix = glMatrix.mat4.fromRotation(glMatrix.mat4.create(), rad_ang, [rotationX, rotationY, rotationZ]);
+        var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+
+        gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
+
+        // Get the normal direction using the model Matrix / Calcular matriz magica
+        var normalMatrixInvert = glMatrix.mat4.invert(glMatrix.mat4.create(), mvMatrix); // invertir matriz original
+        var normalMatrixInvertTranspose = glMatrix.mat4.transpose(glMatrix.mat4.create(), normalMatrixInvert); // Transponer matriz original
+        var normalUniformMatrix = gl.getUniformLocation(gl.program, "u_NormalMatrix");
+        gl.uniformMatrix4fv(normalUniformMatrix, false, normalMatrixInvertTranspose);
+
+        initVertexBuffers(gl);
+
+        if(primitiveValue =="triangles"){
                 // Draw
                 gl.drawElements(gl.TRIANGLES, 15 * 2 * 3, gl.UNSIGNED_SHORT, 0);
             }else{
                 gl.drawElements(gl.LINE_LOOP, 15 * 2 * 3, gl.UNSIGNED_SHORT, 0);
             }
 
-            // Incremento angulo con la velocidad
-            var speed = parseFloat(document.getElementById('speed').value);
+        // COMÚN
+      
+        // Rotacion
+        if (Rotacion){
             rad_ang += 0.01 *speed;
-        }else{
-            // Si la casilla Rotacion desactivada
-            if(mvMatrixGuardada){
-                var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
-                gl.uniformMatrix4fv(uMvMatrix, false, mvMatrixGuardada);
-            }
-
-            // Dibujar sin rotacion
-                if(primitiveValue =="triangles"){
-                    gl.drawElements(gl.TRIANGLES, 15 * 2 * 3, gl.UNSIGNED_SHORT, 0);
-                }else{
-                    gl.drawElements(gl.LINE_LOOP, 15 * 2 * 3, gl.UNSIGNED_SHORT, 0);
-                }
         }
-
-        initProjection(gl, canvas);
 
         // Call drawScene again in the next browser repaint
         requestAnimationFrame(function() {
-            drawScene(gl, rad_ang, canvas, decorationValue);
+            drawScene(gl, canvas, rad_ang);
         });
     }
 
@@ -392,7 +504,9 @@
     }
 
     function initProjection(gl, canvas) {
-        var projectionValue = document.querySelector('input[name="projection"]:checked').value;
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
+        projectionValue = document.querySelector('input[name="projection"]:checked').value;
 
         // PERSPECTIVE
         if (projectionValue == "perspective"){
@@ -420,26 +534,28 @@
             gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);
         }
 
-        var lightX = document.getElementById("x").value;
-        var lightY = document.getElementById("y").value;
-        var lightZ = document.getElementById("z").value;
-
         var ambientLight = [ 0.2, 0.2, 0.2, 1 ];
         var ambientLightUniform = gl.getUniformLocation(gl.program, "u_AmbientLight");
         gl.uniform4fv(ambientLightUniform, ambientLight);   
-        
-
-		var lightDirection = [lightX, lightY, lightZ];
-		glMatrix.vec3.normalize(lightDirection, lightDirection);
-		var lightDirectionUniform = gl.getUniformLocation(gl.program, "u_LightDirection");
-		gl.uniform3fv(lightDirectionUniform, lightDirection);
 
         var lightColor = [1.0, 1.0, 1.0];
         var lightColorUniform = gl.getUniformLocation(gl.program, "u_LightColor");
         gl.uniform3fv(lightColorUniform, lightColor);
-    }
 
+        var lightX = document.getElementById("x").value;
+        var lightY = document.getElementById("y").value;
+        var lightZ = document.getElementById("z").value;
+		var lightDirection = [lightX, lightY, lightZ];
+
+		glMatrix.vec3.normalize(lightDirection, lightDirection);
+		var lightDirectionUniform = gl.getUniformLocation(gl.program, "u_LightDirection");
+		gl.uniform3fv(lightDirectionUniform, lightDirection);
+    }
+  
     function initShaders(gl, vs_source, fs_source) {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
+
         // Compile shaders
         var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
         var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
@@ -464,25 +580,34 @@
     }
 
     function initTexturesAndDraw(gl, rad_ang) {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
         var image0 = new Image();
         image0.src = 'portal.jpg';
         var image1 = new Image();
         image1.src = 'light.jpg';
+        var image2 = new Image();
+        image2.src = 'deathstar.png';
+
         image0.onload = function () {
-            loadTexture(gl, "u_Sampler0", image0, 0, true);
-            image1.onload = function () {
-                loadTexture(gl, "u_Sampler1", image1, 1, true);
-                drawScene(gl, rad_ang);
-            };
+                loadTexture(gl, "u_Sampler0", image0, 0, true);
+                    image1.onload = function () {
+                        loadTexture(gl, "u_Sampler1", image1, 1, true);
+                        image2.onload = function () {
+                            loadTexture(gl, "u_SamplerSphere", image2, 2, false);
+                            drawScene(gl, canvas, rad_ang)
+                        };
+                    };
         };
     }
-
 
     function isPowerOf2(value) {
         return (value & (value - 1)) == 0;
     }
 
     function loadTexture(gl, samplerUniform, image, unitNumber, flip) {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
         // Flip the image's y axis
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
 
@@ -507,8 +632,10 @@
         var fragmentSamplerUniform = gl.getUniformLocation(gl.program, samplerUniform);
         gl.uniform1i(fragmentSamplerUniform, unitNumber);
     }
-    
+
     function makeShader(gl, src, type) {
+        canvas = document.getElementById("myCanvas");
+        gl = canvas.getContext("webgl");
         var shader = gl.createShader(type);
         gl.shaderSource(shader, src);
         gl.compileShader(shader);
@@ -518,6 +645,5 @@
         }
         return shader;
     }
-
 </script>
 </html>
